@@ -1,0 +1,53 @@
+options: R1.yaml
+
+# PILOT NUMBER
+pilot: 5
+
+# SEEDING MODE. Seeding refers to the release of floats simulating
+# contaminants in the water. These floats move as passive tracers.
+#
+# There are two seeding modes allowed to the user: 
+#
+# 1. "Area" seeding, where the user selects one or more polygons (e.g.
+# oyster beds). Floats are seeded following a uniform distribution 
+# within the selected areas.
+#
+# 2. "Point" seeding, where the user just select the coordinates and 
+# floats are seeded around the selected location.
+
+seed: 'area'
+
+# AREA FILE. If "area" seeding is selected, then read the polygons
+# from this file, which can either be a shapefile of plain text file.
+
+file: ''
+
+# POINT SEEDING INFORMATION. There are the geographical coordinates
+# and a radius [m] of uniform dispersion around the center to add some 
+# uncertainty on the origin of contamination. Example for Galway Bay: 
+
+lon: -9.1
+lat: 53.2
+radius: 1000
+
+# SEEDING LEVEL. Seed either at the surface or at the bottom. 
+
+level: 'bottom'
+
+# TIME INTERVAL. The time interval in which floats are released. 
+# This interval is defined by a time and an uncertainty [h] before
+# and after that time.
+
+time: '2021-10-10 00:00:00'
+uncertainty: 0
+
+# DURATION OF THE RUN. This is the time span [h] of the run.
+
+duration: 72
+
+# TRACKING MODE. Either backward (-1) to retrieve the source of 
+# contamination, or forward (+1) to determine where the contaminants
+# move from the source.
+
+mode: -1
+
