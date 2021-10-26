@@ -1131,8 +1131,9 @@ class TextHandler(logging.Handler):
     def emit(self, record):
         msg = self.format(record)
         if 'active elements' in msg:
-            msg = re.findall(r'\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2} - step \d+ of \d+', 
-                msg)[0] + '\n'
+            msg1 = re.findall(r'\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}', msg)[0]
+            msg2 = re.findall(r' - step \d+ of \d+', msg)[0] 
+            msg = msg1 + msg2 + '\n'
         else:
             msg = ''           
         self.queue.put(msg)  

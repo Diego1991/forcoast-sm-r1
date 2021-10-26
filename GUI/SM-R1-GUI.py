@@ -16,6 +16,7 @@ import threading
 from tkinter import filedialog
 import tkinter as tk
 import tkinter.ttk as ttk
+import wget
 import xarray as xr
 
 class Root(tk.Tk):   
@@ -23,6 +24,22 @@ class Root(tk.Tk):
     def __init__(self):
         super(Root, self).__init__()
         self.queue = queue.Queue()
+        
+        ''' Create output directories, if needed '''
+        if not os.path.isdir('tmp'):
+            os.mkdir('tmp')
+        else:            
+            tmp = [f for f in os.listdir('tmp') if f.endswith('.tmp')]
+            for file in tmp:                
+                os.remove(os.path.join('tmp', file))
+        if not os.path.isdir('OUTPUT'):
+            os.mkdir('OUTPUT')
+            os.mkdir('OUTPUT/FLOATS')
+            os.mkdir('OUTPUT/HEAT')
+        if not os.path.isdir('OUTPUT/FLOATS'):
+            os.mkdir('OUTPUT/FLOATS')
+        if not os.path.isdir('OUTPUT/HEAT'):
+            os.mkdir('OUTPUT/HEAT')
         
         ''' Get Pilot number '''
         with open('pilot.txt', 'r') as fid:
@@ -32,14 +49,12 @@ class Root(tk.Tk):
         if os.path.isfile('forcoast.ico'):
             self.wm_iconbitmap('forcoast.ico')         
         self.resizable(0, 0)
-        
-        self.plot_heatmap = True
-        
+               
         # Number of floats
         self.n = 1000
         
         # Initialize plotting handles
-        self.point, self.points, self.polybed, self.heatmap = [], [], [], []        
+        self.point, self.points, self.polybed = [], [], []
                     
         ''' Set Pilot-specific configuration '''
         if Pilot == 1: # PORTUGAL
@@ -48,9 +63,47 @@ class Root(tk.Tk):
             self.destroy(); return      
             
         elif Pilot == 2: # SPAIN
-            tk.messagebox.showerror(title='Wrong input', 
-                message='Service Module not implemented in this Pilot yet')
-            self.destroy(); return             
+        
+            # Opendrift time step [s]
+            self.dt = 600
+            
+            ''' Download from EuskOOS '''
+            
+            f = 'croco_original_exp.nc'
+            # Set url to download from
+            url = 'https://thredds.euskoos.eus/thredds/fileServer/testAll/' + f
+            # Remove file from local filesystem if already exists. This
+            # is to ensure that the latest available file is used.
+            if os.path.exists('tmp/' + f):
+                os.remove('tmp/' + f)
+            # Download from EuskOOS
+            print('Downloading ' + url + '...')  
+            while True:
+                try:
+                    self.ocn = wget.download(url, out = 'tmp/' + f); break
+                except ConnectionResetError:
+                    print('Error downloading file. Trying again...')
+            self.ocn = 'tmp/' + f
+            # Add time units attribute for OpenDrift to be able to read the time
+            with Dataset(self.ocn, 'a') as nc:
+                time = nc.variables['time']
+                time.units = 'seconds since 2021-01-01 00:00:00'
+            with Dataset(self.ocn, 'r') as nc:
+                # Read longitude
+                self.x = nc.variables['lon_rho'][:]
+                # Read latitude
+                self.y = nc.variables['lat_rho'][:]                
+                # Read time
+                time = nc.variables['time'][:]  
+            # Time offset                                          
+            offset = datetime(2021, 1, 1)
+            # Create time list
+            self.time = [offset + timedelta(seconds=i) for i in time]
+                
+            ''' Read coastline '''
+            self.coast_x, self.coast_y = self.read_coast('coast2.dat')  
+            
+            self.x_grid, self.y_grid = self.x[0, :], self.y[:, 0]
             
         elif Pilot == 3: # BULGARIA
             tk.messagebox.showerror(title='Wrong input', 
@@ -58,8 +111,6 @@ class Root(tk.Tk):
             self.destroy(); return
             
         elif Pilot == 4: # BELGIUM
-        
-            self.dh = .01 # Heatmap grid resolution [deg]
             
             # OpenDrift time step [s] - related to model resolution
             self.dt = 600
@@ -93,12 +144,12 @@ class Root(tk.Tk):
             self.time = [offset + timedelta(seconds=i) for i in time]
             
             ''' Read coastline '''
-            self.coast_x, self.coast_y = self.read_coast('coast4.dat')              
+            self.coast_x, self.coast_y = self.read_coast('coast4.dat')       
+            
+            self.x_grid, self.y_grid = self.x, self.y
         
         elif Pilot == 5: # IRELAND       
            
-            self.dh = .01 # Heatmap grid resolution [deg]
-        
             # Opendrift time step [s]
             self.dt = 60 
            
@@ -120,20 +171,55 @@ class Root(tk.Tk):
             ''' Read coastline '''
             self.coast_x, self.coast_y = self.read_coast('coast5.dat')  
             
+            self.x_grid, self.y_grid = self.x[0, :], self.y[:, 0]
+            
         elif Pilot == 6: # DENMARK
-            tk.messagebox.showerror(title='Wrong input', 
-                message='Service Module not implemented in this Pilot yet')
-            self.destroy(); return
-           
-        elif Pilot == 7: # ROMANIA
         
+            # Opendrift time step [s]
+            self.dt = 60 
+            
+            ''' Read from HBM-Limfjord '''
+            from ftplib import FTP
+            url = 'ftp.dmi.dk'
+            ftp = FTP(url)
+            # Enter login details
+            ftp.login('forcoast', 'DGHMTSJ.kumvvhf')
+            ftp.cwd('outgoing')
+            files = sorted(ftp.nlst())
+            self.ocn = 'tmp/' + files[-1]
+            with open(self.ocn, 'wb') as nc:
+                ftp.retrbinary('RETR ' + files[-1], nc.write)
+            bathy = 'Pilot-6-seafloor-depth.nc'
+            # Add bathymetry to file
+            with Dataset(self.ocn, 'a') as nc, Dataset(bathy) as cdf:
+                H = nc.createVariable('h', 'f8', dimensions=('lat', 'lon'))
+                H.standard_name = 'sea_floor_depth_below_sea_level'
+                H.units = 'meter'
+                H[:] = cdf.variables['h'][:]
+                            
+            with Dataset(self.ocn, 'r') as nc:
+                # Read longitude
+                self.x = nc.variables['lon'][:]
+                # Read latitude
+                self.y = nc.variables['lat'][:]                
+                # Read time
+                time = np.round(86400 * nc.variables['time'][:])
+            # Time offset                                          
+            offset = datetime(1900, 1, 1)
+            # Create time list
+            self.time = [offset + timedelta(seconds=i) for i in time]
+                
+            ''' Read coastline '''
+            self.coast_x, self.coast_y = self.read_coast('coast6.dat')     
+
+            self.x_grid, self.y_grid = self.x, self.y             
+           
+        elif Pilot == 7: # ROMANIA        
             tk.messagebox.showerror(title='Wrong input', 
                 message='Service Module not implemented in this Pilot yet')
             self.destroy(); return
         
         elif Pilot == 8: # ITALY
-            
-            self.dh = .01 # Heatmap grid resolution [deg]
             
             # Opendrift time step [s]
             self.dt = 600
@@ -173,6 +259,8 @@ class Root(tk.Tk):
             
             ''' Read coastline '''
             self.coast_x, self.coast_y = self.read_coast('coast8.dat') 
+            
+            self.x_grid, self.y_grid = self.x, self.y            
                     
         else:
             tk.messagebox.showerror(title='Wrong input', message='Non-existent Pilot')
@@ -181,10 +269,6 @@ class Root(tk.Tk):
         # Get domain geographical boundaries
         self.minx, self.maxx = self.x.min(), self.x.max()
         self.miny, self.maxy = self.y.min(), self.y.max()
-        
-        # Make computational grid for counting floats
-        self.x_grid = np.arange(self.minx, self.maxx + self.dh, self.dh)
-        self.y_grid = np.arange(self.miny, self.maxy + self.dh, self.dh)
                             
         ''' User's input frame '''
         frame = tk.Frame(self)
@@ -217,11 +301,12 @@ class Root(tk.Tk):
         #
         f3 = tk.LabelFrame(frame, text='Select level')
         f3.grid(row=3, column=0, columnspan=2, sticky='WE', padx=5, pady=5)
-        self.level = tk.IntVar(value=0)
-        tk.Radiobutton(f3, text='Bottom',  variable=self.level,
-                       value=0).grid(row=0, column=0, padx=5, pady=5)
+        self.level = tk.IntVar(value=1)
+        r1 = tk.Radiobutton(f3, text='Bottom',  variable=self.level, value=0)
+        r1. grid(row=0, column=0, padx=5, pady=5)
         tk.Radiobutton(f3, text='Surface', variable=self.level, 
-                       value=1).grid(row=0, column=1, padx=5, pady=5)          
+                       value=1).grid(row=0, column=1, padx=5, pady=5)   
+        if Pilot == 2: r1.config(state='disabled')            
         #
         f4 = tk.LabelFrame(frame, text='Select date and time')
         f4.grid(row=4, column=0, columnspan=2, sticky='WE', padx=5, pady=5)
@@ -272,11 +357,8 @@ class Root(tk.Tk):
         self.emd = tk.PhotoImage(file='end.png') 
         tk.Button(area, image=self.emd, command=self.show_end,
             border=0).grid(row=1, column=3, padx=5, sticky='W') 
-                
-        ''' Display frame to show OpenDrift information. This has been 
-            deactivated because, in order to work properly, it requires
-            modifying some scripts within the OpenDrift code. If there is
-            any interest to try this functionality, please contact Pilot 5 '''
+        
+        ''' Display frame '''
         display_frame = tk.LabelFrame(self, text='Display', padx=5, pady=5)
         display_frame.grid(row=2, column=0, columnspan=2, sticky='WE', padx=5, pady=5)
         # Summary display
@@ -309,9 +391,7 @@ class Root(tk.Tk):
         self.index = min(len(self.TIME) - 1, max(0, self.index))
         self.ax.set_title(self.TIME[self.index].strftime('%d-%b-%Y %H:%M')) 
         self.plot_points(self.LON[:, self.index], self.LAT[:, self.index])
-        if self.plot_heatmap:
-            self.plot_heat(self.HEAT[self.index, :, :])
-            
+                    
     def play_forward(self):
         ''' Play forward '''
         if self.M:
@@ -321,9 +401,7 @@ class Root(tk.Tk):
         self.index = min(len(self.TIME) - 1, max(0, self.index))
         self.ax.set_title(self.TIME[self.index].strftime('%d-%b-%Y %H:%M')) 
         self.plot_points(self.LON[:, self.index], self.LAT[:, self.index]) 
-        if self.plot_heatmap:
-            self.plot_heat(self.HEAT[self.index, :, :])
-        
+              
     def process_bedfile(self, file):
         ''' Get farming polygons from user's input file '''
         bed, self.BED, self.npoly = [], {}, 0
@@ -363,9 +441,7 @@ class Root(tk.Tk):
             self.index = 0
         self.ax.set_title(self.TIME[self.index].strftime('%d-%b-%Y %H:%M')) 
         self.plot_points(self.LON[:, self.index], self.LAT[:, self.index])  
-        if self.plot_heatmap:
-            self.plot_heat(self.HEAT[self.index, :, :])
-    
+      
     def show_end(self):
         ''' Show end positions '''
         if self.M:
@@ -374,16 +450,12 @@ class Root(tk.Tk):
             self.index = len(self.TIME) - 1
         self.ax.set_title(self.TIME[self.index].strftime('%d-%b-%Y %H:%M')) 
         self.plot_points(self.LON[:, self.index], self.LAT[:, self.index])  
-        if self.plot_heatmap:
-            self.plot_heat(self.HEAT[self.index, :, :])
-          
+               
     def spawn_thread(self):
         self.summary_display.delete('1.0', 'end')
         self.ax.set_title('')
         if len(self.points):
-            self.points.pop(0).remove() 
-        if len(self.heatmap):
-            self.heatmap.pop(0).remove() 
+            self.points.pop(0).remove()         
         self.fig.canvas.draw()
         ''' Read user's inputs '''
         status, message = self.get_input()
@@ -417,23 +489,31 @@ class Root(tk.Tk):
             self.ax.set_title(self.TIME[self.index].strftime('%d-%b-%Y %H:%M')) 
             self.plot_points(self.LON[:, self.index], self.LAT[:, self.index]) 
             
-            # Compute heatmaps
-            self.summary_display.insert('end', '\n\nComputing density maps...')   
-            self.summary_display.yview('end')
-            self.update_idletasks()
+            ''' Calculate heatmaps '''            
             self.HEAT = np.zeros((len(self.TIME), len(self.y_grid), len(self.x_grid)))
-            for i, t in enumerate(self.TIME): 
-                self.summary_display.insert('end', '\n\t' + t.strftime('%Y-%m-%d %H:%M'))   
-                self.summary_display.yview('end')
-                self.update_idletasks()
+            for i, t in enumerate(self.TIME):                 
                 lon_t, lat_t = self.LON[:, i], self.LAT[:, i]
                 for x, y in zip(lon_t, lat_t):
                     index_x = np.argmax(x < self.x_grid) - 1
                     index_y = np.argmax(y < self.y_grid) - 1
-                    self.HEAT[i, index_y, index_x] += 1
-            if self.plot_heatmap:                    
-                self.plot_heat(self.HEAT[self.index, :, :])
-            # Save heatmaps into NetCDF
+                    self.HEAT[i, index_y, index_x] += 1            
+                
+            ''' Calculate LET (Local Exposure Time; Du et al., 2020) '''
+            cnt = np.zeros((len(self.y_grid), len(self.x_grid)))
+            acm = np.zeros((len(self.y_grid), len(self.x_grid)))   
+            Index_x, Index_y = -1, -1
+            for i in range(self.n):
+                lon_i, lat_i = self.LON[i, :], self.LAT[i, :]
+                for x, y in zip(lon_i, lat_i):
+                    index_x = np.argmax(x < self.x_grid) - 1
+                    index_y = np.argmax(y < self.y_grid) - 1
+                    if (index_x != Index_x) or (index_y != Index_y):
+                        Index_x, Index_y = index_x, index_y
+                        cnt[Index_y, Index_x] += 1
+                    acm[Index_y, Index_x] += 1
+            self.LET = np.divide(acm, cnt)                
+                
+            ''' Save heatmaps and LET into NetCDF '''
             file = r'./OUTPUT/HEAT/FORCOAST-SM-R1-' + \
                 datetime.now().strftime('%Y%m%d%H%M%S') + '-HEAT.nc'  
             with Dataset(file, 'w', format='NETCDF4') as nc:
@@ -454,11 +534,15 @@ class Root(tk.Tk):
                 tiempo.standard_name = 'time'; tiempo.units = 'seconds since 1970-01-01'   
                 tiempo[:] = time
                 # Heat (number of floats per grid cell)
-                heat = nc.createVariable('water_pollution', 'f4', 
+                heat = nc.createVariable('float_count', 'f4', 
                     dimensions=('time', 'lat', 'lon'))
                 heat.long_name = 'number of floats'; heat.units = 'dimensionless'
                 heat[:] = self.HEAT
-                
+                # LET
+                let = nc.createVariable('LET', 'f4', dimensions=('lat', 'lon'))
+                let.long_name = 'local exposure time'
+                let[:] = self.LET
+        
     def check_queue(self):
         while self.queue.qsize():
             try:
@@ -468,19 +552,18 @@ class Root(tk.Tk):
                 self.update_idletasks()
             except queue.Queue.Empty:
                 pass
-    
-    
+        
     def draw_shore(self, ax, x, y):
         ''' Draw the coastline '''
         # Draw the coastline
-        ax.plot(x, y, 'k-')
+        ax.plot(x, y, 'k-')        
         # Search for missing values
         w = np.isnan(x); w = [i for i, val in enumerate(w) if val]
         # Fill  coastal polygons
         for idx in range(len(w)-1):
             X = x[w[idx]+1:w[idx+1]]
             Y = y[w[idx]+1:w[idx+1]]
-            ax.fill(X, Y, '.2')  
+            ax.fill(X, Y, '.2')          
             
     def get_input(self):
         ''' Read user's inputs from GUI '''
@@ -523,15 +606,6 @@ class Root(tk.Tk):
         
         return status, message
     
-    def plot_heat(self, heat):       
-        ''' Plot water pollution heatmap '''
-        heat[heat == 0] = np.nan
-        if len(self.heatmap):
-            self.heatmap.pop(0).remove()               
-        self.heatmap.append(self.ax.pcolor(self.x_grid, self.y_grid, heat,
-                                            vmin=0, vmax=.001*self.n))
-        self.fig.canvas.draw()        
-        
     def plot_map(self, frame):
         ''' Create canvas showing map in the specified tab '''        
         k = 5; fig = Figure(figsize=(k, k), facecolor=(.95, .95, .95), tight_layout=True)
@@ -640,19 +714,23 @@ class ThreadedClient(threading.Thread):
             Pilot = int(fid.readline())
         
         from opendrift.models.oceandrift import OceanDrift        
-        from opendrift.readers import reader_netCDF_CF_generic
-        from opendrift.readers import reader_global_landmask
+        from opendrift.readers import reader_netCDF_CF_generic        
+        from opendrift.readers import reader_shape
         
         # Start Opendrift model instance
         Opendrift = OceanDrift(logtext=self.queue, loglevel=20)  
         Opendrift.set_config('general:coastline_action', 'previous')
+        Opendrift.set_config('general:use_auto_landmask', False)
         Opendrift.set_config('drift:horizontal_diffusivity', 0.5) 
-        
+                
         # Pilot-specific readers
-        if Pilot == 4: # Belgium
-            landmask = reader_global_landmask.Reader(extent=[-4.5,
-                9.5, 48, 57.5])
-            
+        if Pilot == 2: # Spain            
+            from opendrift.readers import reader_ROMS_native            
+            ocean = reader_ROMS_native.Reader(self.ocn)            
+            Opendrift.add_reader(ocean)                        
+        
+        elif Pilot == 4: # Belgium
+                        
             # Get present date    
             today = date.today()
                         
@@ -670,26 +748,30 @@ class ThreadedClient(threading.Thread):
             nc = Dataset(Path(urlparse(url).path).name, memory=data.read())
             dataset = xr.open_dataset(xr.backends.NetCDF4DataStore(nc))
             dataset.variables['time'].attrs['units'] = 'seconds since 1970-01-01T00:00:00Z'
-            phys = reader_netCDF_CF_generic.Reader(dataset, name='NOS_HydroState',
+            ocean = reader_netCDF_CF_generic.Reader(dataset, name='NOS_HydroState',
                 standard_name_mapping={levelstr + \
                 '_baroclinic_eastward_sea_water_velocity': 'x_sea_water_velocity',
                                        levelstr + \
                 '_baroclinic_northward_sea_water_velocity': 'y_sea_water_velocity'
                                        })
-            Opendrift.add_reader([landmask, phys])
+            mask = reader_shape.Reader.from_shpfiles('landmask.shp')
+            Opendrift.add_reader([mask, ocean])
             
         elif Pilot == 5: # Ireland        
             from opendrift.readers import reader_ROMS_native            
-            phys = reader_ROMS_native.Reader(self.ocn)            
-            Opendrift.add_reader(phys)            
-            Opendrift.set_config('general:use_auto_landmask', False)
-            
+            ocean = reader_ROMS_native.Reader(self.ocn)            
+            Opendrift.add_reader(ocean)  
+
+        elif Pilot == 6: # Denmark
+            ocean = reader_netCDF_CF_generic.Reader(self.ocn)
+            mask = reader_shape.Reader.from_shpfiles('landmask.shp')
+            Opendrift.add_reader([mask, ocean])
+
         elif Pilot == 8: # Italy        
-            landmask = reader_global_landmask.Reader(extent=[12.2, 
-                43.4, 16.1, 45.9])           
+            mask = reader_shape.Reader.from_shpfiles('landmask.shp')           
             bathy = reader_netCDF_CF_generic.Reader('Pilot-8-seafloor-depth.nc')
-            phys = reader_netCDF_CF_generic.Reader(self.ocn)                        
-            Opendrift.add_reader([landmask, bathy, phys])  
+            ocean = reader_netCDF_CF_generic.Reader(self.ocn)                        
+            Opendrift.add_reader([mask, bathy, ocean])  
                 
         # Get time range for seeding based on time uncertainty
         idate = self.t - timedelta(hours=self.tunc)
@@ -711,7 +793,13 @@ class ThreadedClient(threading.Thread):
         self.file = r'./OUTPUT/FLOATS/FORCOAST-SM-R1-' + \
             datetime.now().strftime('%Y%m%d%H%M%S') + '.nc' 
         # Run OpenDrift
-        Opendrift.run(end_time=self.t + (1 - 2 * self.M) * timedelta(hours=self.D),            
+        if self.M:
+            end_time = max(self.t + (1 - 2 * self.M) * timedelta(hours=self.D),
+                ocean.start_time)
+        else:                
+            end_time = min(self.t + (1 - 2 * self.M) * timedelta(hours=self.D), 
+                ocean.end_time)
+        Opendrift.run(end_time=end_time,            
                       time_step=(1 - 2 * self.M) * self.dt,
                       time_step_output=timedelta(seconds=3600),
                       outfile=self.file,

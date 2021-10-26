@@ -5,11 +5,13 @@ from matplotlib.path import Path
 from netCDF4 import Dataset
 import numpy as np
 from opendrift.models.oceandrift import OceanDrift
-from opendrift.readers import reader_netCDF_CF_generic, reader_global_landmask
+from opendrift.readers import reader_netCDF_CF_generic, reader_shape
+import os
 from random import random, uniform
 import re
 import requests
 from shapely.geometry import Polygon, Point
+import wget
 import xarray as xr
 import yaml
 
@@ -51,6 +53,22 @@ def random_points_within(poly, num_points):
     return points         
  
 def main():
+    
+    ''' Create output directories, if needed '''
+    if not os.path.isdir('tmp'):
+        os.mkdir('tmp')
+    else:            
+        tmp = [f for f in os.listdir('tmp') if f.endswith('.tmp')]
+        for file in tmp:                
+            os.remove(os.path.join('tmp', file))
+    if not os.path.isdir('OUTPUT'):
+        os.mkdir('OUTPUT')
+        os.mkdir('OUTPUT/FLOATS')
+        os.mkdir('OUTPUT/HEAT')
+    if not os.path.isdir('OUTPUT/FLOATS'):
+        os.mkdir('OUTPUT/FLOATS')
+    if not os.path.isdir('OUTPUT/HEAT'):
+        os.mkdir('OUTPUT/HEAT')
     
     ''' Argument parser '''
     ap = argparse.ArgumentParser()
@@ -94,7 +112,7 @@ def main():
     for key, val in zip(argv.keys(), argv.values()):
          if val: options[key] = val
     
-    # Get starting and end dates for seeding as datetime objects
+    ''' Get starting and end dates for seeding as datetime objects '''
     time = datetime.strptime(options['time'], '%Y-%m-%d %H:%M:%S')
     uncertainty = float(options['uncertainty'])
     idate = time - timedelta(hours=uncertainty)
@@ -107,7 +125,8 @@ def main():
     
     # If area seeding has been selected, process farming areas file.
     if options['seed'] == 'area': bed = process_bedfile(options['file'])                  
-        
+    
+    ''' OpenDrift configuration '''    
     # Set OpenDrift output NetCDF file name. This file is an ouput from this SM.
     file = r'./OUTPUT/FLOATS/FORCOAST-SM-R1-' + \
         datetime.now().strftime('%Y%m%d%H%M%S') + '.nc'      
@@ -118,6 +137,8 @@ def main():
     Opendrift.set_config('general:coastline_action', 'previous')
     # Add some diffusivity
     Opendrift.set_config('drift:horizontal_diffusivity', 0.5) 
+    # Use prescribed land/sea mask
+    Opendrift.set_config('general:use_auto_landmask', False)
     
     # Get seeding level (either surface of bottom)
     if options['level'] == 'bottom':
@@ -125,12 +146,49 @@ def main():
     else:
         levelstr, Z = 'surface', 0
         
-    # Pilot-specific code 
+    ''' Pilot-specific code '''
     if int(options['pilot']) == 1: # PORTUGAL
         raise ValueError('Service Module R1 not implemented for this Pilot yet')           
         
     elif int(options['pilot']) == 2: # SPAIN
-        raise ValueError('Service Module R1 not implemented for this Pilot yet')
+        print("Only surface level available at Pilot-2. " +
+              "Setting level to 'surface' anyway")
+        Z = 0
+        
+        from opendrift.readers import reader_ROMS_native
+        
+        # Opendrift time step [s] - depends on model resolution
+        dt = 600 
+        
+        f = 'croco_original_exp.nc'
+        # Set url to download from
+        url = 'https://thredds.euskoos.eus/thredds/fileServer/testAll/' + f
+        # Remove file from local filesystem if already exists. This
+        # is to ensure that the latest available file is used.
+        if os.path.exists('tmp/' + f):
+            os.remove('tmp/' + f)
+        # Download from EuskOOS
+        print('Downloading ' + url + '...')  
+        while True:
+            try:
+                ocn = wget.download(url, out = 'tmp/' + f); break
+            except ConnectionResetError:
+                print('Error downloading file. Trying again...')          
+        ocn = wget.download(url, out = 'tmp/' + f)               
+        with Dataset(ocn, 'a') as nc:
+            time = nc.variables['time']
+            time.units = 'seconds since 2021-01-01 00:00:00'
+        with Dataset(ocn, 'r') as nc:
+            # Read longitude
+            x = nc.variables['lon_rho'][:]
+            # Read latitude
+            y = nc.variables['lat_rho'][:]                            
+        # Generate reader for physics 
+        ocean = reader_ROMS_native.Reader(ocn)  
+        # Add readers          
+        Opendrift.add_reader(ocean)          
+        # Grid for heatmap calculation
+        x_grid, y_grid = x[0, :], y[:, 0]
         
     elif int(options['pilot']) == 3: # BULGARIA
         raise ValueError('Service Module R1 not implemented for this Pilot yet')
@@ -141,35 +199,38 @@ def main():
         from urllib.parse import urlparse
         
         # Opendrift time step [s] - depends on model resolution
-        dt = 600
-        # Get high resolution landmask from GSHHG database
-        landmask = reader_global_landmask.Reader(extent=[-4.5, 9.5, 48, 57.5])
+        dt = 600       
         # Get present date    
         today = date.today()
         # Read from the Royal Belgian Institute of Natural Sciences ERDDAP Server 
-        idate = '(' + (today - timedelta(days=30)).strftime('%Y-%m-%dT%H:%M:%SZ') + ')'            
+        itime = '(' + (today - timedelta(days=30)).strftime('%Y-%m-%dT%H:%M:%SZ') + ')'            
         root = 'https://erddap.naturalsciences.be/erddap/griddap/NOS_HydroState_V1.nc?'
         url = root + levelstr + '_baroclinic_eastward_sea_water_velocity' + \
-            '[' + idate + ':last][(48.5):1:(57.0)][(-4.0):1:(9.0)],' + \
+            '[' + itime + ':last][(48.5):1:(57.0)][(-4.0):1:(9.0)],' + \
                           levelstr + '_baroclinic_northward_sea_water_velocity' + \
-             '[' + idate + ':last][(48.5):1:(57.0)][(-4.0):1:(9.0)]'
+             '[' + itime + ':last][(48.5):1:(57.0)][(-4.0):1:(9.0)]'
         data = urlopen(url=url)  
+        with Dataset(Path(urlparse(url).path).name, 
+                     memory=data.read()) as nc:
+            # Read longitude
+            x_grid = nc.variables['longitude'][:]
+            # Read latitude
+            y_grid = nc.variables['latitude'][:]
         nc = Dataset(Path(urlparse(url).path).name, memory=data.read())
         dataset = xr.open_dataset(xr.backends.NetCDF4DataStore(nc))
         dataset.variables['time'].attrs['units'] = 'seconds since 1970-01-01T00:00:00Z'
         # Generate reader for physics
-        phys = reader_netCDF_CF_generic.Reader(dataset, name='NOS_HydroState',
+        ocean = reader_netCDF_CF_generic.Reader(dataset, name='NOS_HydroState',
             standard_name_mapping={levelstr + \
             '_baroclinic_eastward_sea_water_velocity': 'x_sea_water_velocity',
                                    levelstr + \
             '_baroclinic_northward_sea_water_velocity': 'y_sea_water_velocity'
                                    })
+        # Generate reader for landmask
+        mask = reader_shape.Reader.from_shpfiles('landmask.shp')
         # Add readers
-        Opendrift.add_reader([landmask, phys])
-        
-        # Set domain limits to create heatmap (pollution density) grid
-        minx, maxx, miny, maxy = -4, 9, 48.5, 57
-    
+        Opendrift.add_reader([mask, ocean])                
+           
     elif int(options['pilot']) == 5: # IRELAND   
         from opendrift.readers import reader_ROMS_native
         
@@ -177,18 +238,51 @@ def main():
         dt = 60 
         # Read from ROMS Galway Bay 
         ocn = 'http://milas.marine.ie/thredds/dodsC/IMI_ROMS_HYDRO/GALWAY_BAY_NATIVE_70M_8L_1H/AGGREGATE'
+        with Dataset(ocn, 'r') as nc:
+            # Read longitude
+            x = nc.variables['lon_rho'][:]
+            # Read latitude
+            y = nc.variables['lat_rho'][:]     
         # Generate reader for physics 
-        phys = reader_ROMS_native.Reader(ocn)  
+        ocean = reader_ROMS_native.Reader(ocn)  
         # Add readers          
-        Opendrift.add_reader(phys)          
-        # Use ROMS land/sea mask
-        Opendrift.set_config('general:use_auto_landmask', False)
-        
-        # Set domain limits to create heatmap (pollution density) grid
-        minx, maxx, miny, maxy = -9.2120, -8.8804, 53.1134, 53.2806
+        Opendrift.add_reader(ocean)          
+        # Grid for heatmap calculation
+        x_grid, y_grid = x[0, :], y[:, 0]
         
     elif int(options['pilot']) == 6: # DENMARK
-        raise ValueError('Service Module R1 not implemented for this Pilot yet')
+        # Opendrift time step [s]
+        dt = 60 
+        
+        ''' Read from HBM-Limfjord '''
+        from ftplib import FTP
+        url = 'ftp.dmi.dk'
+        ftp = FTP(url)
+        # Enter login details
+        ftp.login('forcoast', 'DGHMTSJ.kumvvhf')
+        ftp.cwd('outgoing')
+        files = sorted(ftp.nlst())
+        ocn = 'tmp/' + files[-1]
+        with open(ocn, 'wb') as nc:
+            ftp.retrbinary('RETR ' + files[-1], nc.write)
+        bathy = 'Pilot-6-seafloor-depth.nc'
+        # Add bathymetry to file
+        with Dataset(ocn, 'a') as nc, Dataset(bathy) as cdf:
+            H = nc.createVariable('h', 'f8', dimensions=('lat', 'lon'))
+            H.standard_name = 'sea_floor_depth_below_sea_level'
+            H.units = 'meter'
+            H[:] = cdf.variables['h'][:]                        
+        with Dataset(ocn, 'r') as nc:
+            # Read longitude
+            x_grid = nc.variables['lon'][:]
+            # Read latitude
+            y_grid = nc.variables['lat'][:]                            
+        # Generate reader for physics        
+        ocean = reader_netCDF_CF_generic.Reader(ocn)
+        # Generate reader for landmask
+        mask = reader_shape.Reader.from_shpfiles('landmask.shp')
+        # Add readers
+        Opendrift.add_reader([mask, ocean])
        
     elif int(options['pilot']) == 7: # ROMANIA
         raise ValueError('Service Module R1 not implemented for this Pilot yet')   
@@ -215,23 +309,26 @@ def main():
         ocn = sm + fc
         url = 'https://dsecho.inogs.it/thredds/dodsC/pilot8/model_OGS/RFVL/'
         ocn = [url + dates + '/'+ i for i in ocn]  
-        
-        # Get high resolution landmask from GSHHG database
-        landmask = reader_global_landmask.Reader(extent=[12.2, 43.4, 16.1, 45.9]) 
+        with xr.open_mfdataset(ocn, chunks={'time': 1}, concat_dim='time',
+            combine='by_coords', compat='override', decode_times=False,                                   
+            data_vars='minimal', coords='minimal') as nc:
+            # Read longitude
+            x_grid = nc.variables['longitude'][:]
+            # Read latitude
+            y_grid = nc.variables['latitude'][:]        
         # Generate reader for bathymetry          
         bathy = reader_netCDF_CF_generic.Reader('Pilot-8-seafloor-depth.nc')
         # Generate reader for physics
-        phys = reader_netCDF_CF_generic.Reader(ocn)      
+        ocean = reader_netCDF_CF_generic.Reader(ocn)   
+        # Generate reader for landmask
+        mask = reader_shape.Reader.from_shpfiles('landmask.shp')
         # Add readers                  
-        Opendrift.add_reader([landmask, bathy, phys]) 
-        
-        # Set domain limits to create heatmap (pollution density) grid
-        minx, maxx, miny, maxy = 12.2227, 16.0742, 43.4727, 45.8086
+        Opendrift.add_reader([mask, bathy, ocean]) 
         
     else:
         raise ValueError('Service Module R1 not implemented for this Pilot yet')    
           
-    # Seed elements 
+    ''' Seed elements '''
     if options['seed'] == 'point': # point seeding
         Opendrift.seed_elements(lon=float(options['lon']),
                                 lat=float(options['lat']),
@@ -252,37 +349,50 @@ def main():
     else:
         raise ValueError("Seed must be either 'point' or 'area'")
     
-    # Run OpenDrift
-    Opendrift.run(duration=timedelta(hours=float(options['duration'])),
-                  time_step= int(options['mode']) * dt,
+    ''' Run OpenDrift '''
+    if options['mode'] < 0:
+        end_time = max(time - timedelta(hours=float(options['duration'])),
+            ocean.start_time)
+    else:                
+        end_time = min(time + timedelta(hours=float(options['duration'])), 
+            ocean.end_time)
+    Opendrift.run(end_time=end_time,
+                  time_step= np.sign(int(options['mode'])) * dt,
                   time_step_output=timedelta(seconds=3600),
                   outfile=file,
                   export_variables=['time', 'lon', 'lat', 'z'])
-    
-    # Generate grid to calculate heatmaps (water pollution density    
-    dh = .01 # Grid resolution
-    # x-coordinate of grid
-    x_grid = np.arange(minx, maxx + dh, dh)
-    # y-coordinate of grid
-    y_grid = np.arange(miny, maxy + dh, dh)
-    
-    # Read from OpenDrift output file
+        
+    ''' Read from OpenDrift output file '''
     with Dataset(file, 'r') as nc:
         LON = nc.variables['lon'][:]
         LAT = nc.variables['lat'][:]
         TIME = nc.variables['time'][:]
     
-    # Compute heatmaps
-    print('\n\nComputing density maps...')   
+    ''' Calculate heatmaps '''            
     HEAT = np.zeros((len(TIME), len(y_grid), len(x_grid)))
-    for i, t in enumerate(TIME): 
-        print('\n\t' + datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M'))           
+    for i, t in enumerate(TIME):                 
         lon_t, lat_t = LON[:, i], LAT[:, i]
         for x, y in zip(lon_t, lat_t):
             index_x = np.argmax(x < x_grid) - 1
             index_y = np.argmax(y < y_grid) - 1
-            HEAT[i, index_y, index_x] += 1
-    # Save heatmaps into NetCDF. This file is the second output from this SM.
+            HEAT[i, index_y, index_x] += 1            
+        
+    ''' Calculate LET (Local Exposure Time; Du et al., 2020) '''
+    cnt = np.zeros((len(y_grid), len(x_grid)))
+    acm = np.zeros((len(y_grid), len(x_grid)))   
+    Index_x, Index_y = -1, -1
+    for i in range(n):
+        lon_i, lat_i = LON[i, :], LAT[i, :]
+        for x, y in zip(lon_i, lat_i):
+            index_x = np.argmax(x < x_grid) - 1
+            index_y = np.argmax(y < y_grid) - 1
+            if (index_x != Index_x) or (index_y != Index_y):
+                Index_x, Index_y = index_x, index_y
+                cnt[Index_y, Index_x] += 1
+            acm[Index_y, Index_x] += 1
+    LET = np.divide(acm, cnt)                
+        
+    ''' Save heatmaps and LET into NetCDF '''
     file = r'./OUTPUT/HEAT/FORCOAST-SM-R1-' + \
         datetime.now().strftime('%Y%m%d%H%M%S') + '-HEAT.nc'  
     with Dataset(file, 'w', format='NETCDF4') as nc:
@@ -301,12 +411,16 @@ def main():
         # Time
         tiempo = nc.createVariable('time', 'f8', dimensions=('time'))
         tiempo.standard_name = 'time'; tiempo.units = 'seconds since 1970-01-01'   
-        tiempo[:] = TIME
+        tiempo[:] = time
         # Heat (number of floats per grid cell)
-        heat = nc.createVariable('water_pollution', 'f4', 
+        heat = nc.createVariable('float_count', 'f4', 
             dimensions=('time', 'lat', 'lon'))
         heat.long_name = 'number of floats'; heat.units = 'dimensionless'
         heat[:] = HEAT
+        # LET
+        let = nc.createVariable('LET', 'f4', dimensions=('lat', 'lon'))
+        let.long_name = 'local exposure time'
+        let[:] = LET
     
 if __name__ == "__main__":
     main()    
