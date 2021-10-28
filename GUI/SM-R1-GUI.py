@@ -187,6 +187,7 @@ class Root(tk.Tk):
             ftp.cwd('outgoing')
             files = sorted(ftp.nlst())
             self.ocn = 'tmp/' + files[-1]
+            print('Downloading ' + files[-1] + '...')  
             with open(self.ocn, 'wb') as nc:
                 ftp.retrbinary('RETR ' + files[-1], nc.write)
             bathy = 'Pilot-6-seafloor-depth.nc'
@@ -195,8 +196,7 @@ class Root(tk.Tk):
                 H = nc.createVariable('h', 'f8', dimensions=('lat', 'lon'))
                 H.standard_name = 'sea_floor_depth_below_sea_level'
                 H.units = 'meter'
-                H[:] = cdf.variables['h'][:]
-                            
+                H[:] = cdf.variables['h'][:]                            
             with Dataset(self.ocn, 'r') as nc:
                 # Read longitude
                 self.x = nc.variables['lon'][:]
@@ -247,9 +247,9 @@ class Root(tk.Tk):
                 combine='by_coords', compat='override', decode_times=False,                                   
                 data_vars='minimal', coords='minimal') as nc:
                 # Read longitude
-                self.x = nc.variables['longitude'][:]
+                self.x = nc.variables['longitude'][:].data
                 # Read latitude
-                self.y = nc.variables['latitude'][:]
+                self.y = nc.variables['latitude'][:].data
                 # Read time
                 time = nc.variables['time'][:].data            
             # Time offset
@@ -464,8 +464,8 @@ class Root(tk.Tk):
             
         ''' Launch a separate thread to run OpenDrift '''
         self.start_button.config(state='disabled')
-        self.thread = ThreadedClient(self.queue, self.ocn, self.seed, 
-            self.L, self.n, self.t, self.tunc, self.D, self.M, self.dt)        
+        self.thread = ThreadedClient(self.queue, self.ocn, self.seed, self.L,
+            self.n, self.t, self.tunc, self.time, self.D, self.M, self.dt)        
         self.thread.start()
         self.periodic_call()
         
@@ -475,6 +475,11 @@ class Root(tk.Tk):
             self.after(100, self.periodic_call)
         else:
             self.start_button.config(state='active')
+            if not hasattr(self.thread, 'file'):
+                self.summary_display.insert('end', 'ERROR: OpenDrift returned no file.\n')   
+                self.summary_display.yview('end')
+                self.update_idletasks()
+                return
             # Read from file
             with Dataset(self.thread.file, 'r') as nc:
                 self.LON = nc.variables['lon'][:]
@@ -692,14 +697,22 @@ class Root(tk.Tk):
         
 class ThreadedClient(threading.Thread):
     
-    def __init__(self, queue, ocn, seed, level, n, t, tunc, D, M, dt):
+    def __init__(self, queue, ocn, seed, level, n, t, tunc, times, D, M, dt):
         threading.Thread.__init__(self)
         self.queue = queue
         self.ocn = ocn
         self.seed = seed
         self.level = level
         self.n = n
-        self.t, self.tunc, self.D, self.M, self.dt = t, tunc, D, M, dt
+        self.t, self.tunc, self.times = t, tunc, times
+        self.D, self.M, self.dt = D, M, dt
+        
+    def fixdate(self, date, times):
+        if date > max(times):
+            date = max(times)
+        elif date < min(times):
+            date = min(times)
+        return date
                 
     def run(self):
         
@@ -778,6 +791,7 @@ class ThreadedClient(threading.Thread):
         edate = self.t + timedelta(hours=self.tunc)
         
         # Seed elements 
+        idate, edate = self.fixdate(idate, self.times), self.fixdate(edate, self.times)
         if self.seed[0] == 'P': # point seeding
             x, y, R = self.seed[1:]
             Opendrift.seed_elements(lon=x, lat=y, z=Z,
@@ -799,11 +813,22 @@ class ThreadedClient(threading.Thread):
         else:                
             end_time = min(self.t + (1 - 2 * self.M) * timedelta(hours=self.D), 
                 ocean.end_time)
-        Opendrift.run(end_time=end_time,            
-                      time_step=(1 - 2 * self.M) * self.dt,
-                      time_step_output=timedelta(seconds=3600),
-                      outfile=self.file,
-                      export_variables=['time', 'lon', 'lat', 'z'])
+        try:
+            Opendrift.run(end_time=end_time,            
+                          time_step=(1 - 2 * self.M) * self.dt,
+                          time_step_output=timedelta(seconds=3600),
+                          outfile=self.file,
+                          export_variables=['time', 'lon', 'lat', 'z'])
+            return
+        except AttributeError as e:
+            if str(e) == "'OceanDrift' object has no attribute 'environment'":               
+                msg = "Unable to run OpenDrift. This usually happens when there are " + \
+                  "no time steps to process (e.g. the last available time step "      + \
+                  "has been selected together with a forward-in-time mode, or "       + \
+                  "viceversa, the first time step together with a backward-in-time "  + \
+                  "mode. Please check user's selections in the GUI, or YAML file if " + \
+                  "the CLI version is being used. "
+                self.queue.put(msg);  delattr(self, 'file');  return                
         
     def random_points_within(self, poly, num_points):
         ''' Get random points uniformly distributed within a polygon '''

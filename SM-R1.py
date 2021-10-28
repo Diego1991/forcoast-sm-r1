@@ -51,6 +51,13 @@ def random_points_within(poly, num_points):
             points.append(random_point)
 
     return points         
+
+def fixdate(date, times):
+    if date > max(times):
+        date = max(times)
+    elif date < min(times):
+        date = min(times)
+    return date
  
 def main():
     
@@ -173,16 +180,21 @@ def main():
             try:
                 ocn = wget.download(url, out = 'tmp/' + f); break
             except ConnectionResetError:
-                print('Error downloading file. Trying again...')          
-        ocn = wget.download(url, out = 'tmp/' + f)               
+                print('Error downloading file. Trying again...')      
         with Dataset(ocn, 'a') as nc:
-            time = nc.variables['time']
-            time.units = 'seconds since 2021-01-01 00:00:00'
+            timenc = nc.variables['time']
+            timenc.units = 'seconds since 2021-01-01 00:00:00'
         with Dataset(ocn, 'r') as nc:
             # Read longitude
             x = nc.variables['lon_rho'][:]
             # Read latitude
-            y = nc.variables['lat_rho'][:]                            
+            y = nc.variables['lat_rho'][:]   
+            # Read time
+            times = nc.variables['time'][:]  
+        # Time offset                                          
+        offset = datetime(2021, 1, 1)
+        # Create time list
+        times = [offset + timedelta(seconds=i) for i in times]                         
         # Generate reader for physics 
         ocean = reader_ROMS_native.Reader(ocn)  
         # Add readers          
@@ -216,6 +228,12 @@ def main():
             x_grid = nc.variables['longitude'][:]
             # Read latitude
             y_grid = nc.variables['latitude'][:]
+            # Read time
+            times = nc.variables['time'][:]
+        # Time offset
+        offset = datetime(1970, 1, 1)
+        # Create time list
+        times = [offset + timedelta(seconds=i) for i in times]
         nc = Dataset(Path(urlparse(url).path).name, memory=data.read())
         dataset = xr.open_dataset(xr.backends.NetCDF4DataStore(nc))
         dataset.variables['time'].attrs['units'] = 'seconds since 1970-01-01T00:00:00Z'
@@ -242,7 +260,13 @@ def main():
             # Read longitude
             x = nc.variables['lon_rho'][:]
             # Read latitude
-            y = nc.variables['lat_rho'][:]     
+            y = nc.variables['lat_rho'][:]   
+            # Read time
+            times = nc.variables['ocean_time'][:]  
+        # Time offset                                          
+        offset = datetime(1968, 5, 23)
+        # Create time list
+        times = [offset + timedelta(seconds=i) for i in times]
         # Generate reader for physics 
         ocean = reader_ROMS_native.Reader(ocn)  
         # Add readers          
@@ -276,7 +300,13 @@ def main():
             # Read longitude
             x_grid = nc.variables['lon'][:]
             # Read latitude
-            y_grid = nc.variables['lat'][:]                            
+            y_grid = nc.variables['lat'][:]  
+            # Read time
+            times = np.round(86400 * nc.variables['time'][:])
+        # Time offset                                          
+        offset = datetime(1900, 1, 1)
+        # Create time list
+        times = [offset + timedelta(seconds=i) for i in times]                          
         # Generate reader for physics        
         ocean = reader_netCDF_CF_generic.Reader(ocn)
         # Generate reader for landmask
@@ -313,9 +343,15 @@ def main():
             combine='by_coords', compat='override', decode_times=False,                                   
             data_vars='minimal', coords='minimal') as nc:
             # Read longitude
-            x_grid = nc.variables['longitude'][:]
+            x_grid = nc.variables['longitude'][:].data
             # Read latitude
-            y_grid = nc.variables['latitude'][:]        
+            y_grid = nc.variables['latitude'][:].data
+            # Read time
+            times = nc.variables['time'][:].data            
+        # Time offset
+        offset = datetime(1970, 1, 1)            
+        # Create time list
+        times = [offset + timedelta(seconds=i) for i in times]
         # Generate reader for bathymetry          
         bathy = reader_netCDF_CF_generic.Reader('Pilot-8-seafloor-depth.nc')
         # Generate reader for physics
@@ -329,6 +365,7 @@ def main():
         raise ValueError('Service Module R1 not implemented for this Pilot yet')    
           
     ''' Seed elements '''
+    idate, edate = fixdate(idate, times), fixdate(edate, times)    
     if options['seed'] == 'point': # point seeding
         Opendrift.seed_elements(lon=float(options['lon']),
                                 lat=float(options['lat']),
@@ -349,6 +386,9 @@ def main():
     else:
         raise ValueError("Seed must be either 'point' or 'area'")
     
+    ''' Get mode (either forward or backward in time) '''
+    mode = [-1 if float(options['mode']) < 0 else 1][0]
+    
     ''' Run OpenDrift '''
     if options['mode'] < 0:
         end_time = max(time - timedelta(hours=float(options['duration'])),
@@ -356,12 +396,21 @@ def main():
     else:                
         end_time = min(time + timedelta(hours=float(options['duration'])), 
             ocean.end_time)
-    Opendrift.run(end_time=end_time,
-                  time_step= np.sign(int(options['mode'])) * dt,
-                  time_step_output=timedelta(seconds=3600),
-                  outfile=file,
-                  export_variables=['time', 'lon', 'lat', 'z'])
-        
+    try:
+        Opendrift.run(end_time=end_time,
+                      time_step= mode * dt,
+                      time_step_output=timedelta(seconds=3600),
+                      outfile=file,
+                      export_variables=['time', 'lon', 'lat', 'z'])
+    except AttributeError as e:
+        if str(e) == "'OceanDrift' object has no attribute 'environment'":
+            print("Unable to run OpenDrift. This usually happens when there are "     + \
+                  "no time steps to process (e.g. the last available time step "      + \
+                  "has been selected together with a forward-in-time mode, or "       + \
+                  "viceversa, the first time step together with a backward-in-time "  + \
+                  "mode. Please check user's selections in the GUI, or YAML file if " + \
+                  "the CLI version is being used. "); return
+                        
     ''' Read from OpenDrift output file '''
     with Dataset(file, 'r') as nc:
         LON = nc.variables['lon'][:]
@@ -411,7 +460,7 @@ def main():
         # Time
         tiempo = nc.createVariable('time', 'f8', dimensions=('time'))
         tiempo.standard_name = 'time'; tiempo.units = 'seconds since 1970-01-01'   
-        tiempo[:] = time
+        tiempo[:] = TIME
         # Heat (number of floats per grid cell)
         heat = nc.createVariable('float_count', 'f4', 
             dimensions=('time', 'lat', 'lon'))
