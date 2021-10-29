@@ -128,7 +128,7 @@ def main():
     # Number of floats. This number largely determines the amount of 
     # computational effort required to run the particle-tracking
     # simulation. In a powerful server, I'd suggest to use 100,000.
-    n = 1000    
+    n = 100000    
     
     # If area seeding has been selected, process farming areas file.
     if options['seed'] == 'area': bed = process_bedfile(options['file'])                  
