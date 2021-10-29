@@ -230,12 +230,12 @@ def main():
             y_grid = nc.variables['latitude'][:]
             # Read time
             times = nc.variables['time'][:]
+            # Load as xarray dataset
+            dataset = xr.open_dataset(xr.backends.NetCDF4DataStore(nc))
         # Time offset
         offset = datetime(1970, 1, 1)
         # Create time list
         times = [offset + timedelta(seconds=i) for i in times]
-        nc = Dataset(Path(urlparse(url).path).name, memory=data.read())
-        dataset = xr.open_dataset(xr.backends.NetCDF4DataStore(nc))
         dataset.variables['time'].attrs['units'] = 'seconds since 1970-01-01T00:00:00Z'
         # Generate reader for physics
         ocean = reader_netCDF_CF_generic.Reader(dataset, name='NOS_HydroState',
@@ -390,7 +390,7 @@ def main():
     mode = [-1 if float(options['mode']) < 0 else 1][0]
     
     ''' Run OpenDrift '''
-    if options['mode'] < 0:
+    if mode < 0:
         end_time = max(time - timedelta(hours=float(options['duration'])),
             ocean.start_time)
     else:                

@@ -16,12 +16,6 @@ RUN conda config --add channels opendrift
 COPY environment.yml .
 RUN /opt/conda/bin/conda env update -n base -f environment.yml
 
-# Cache cartopy maps
-RUN /bin/bash -c "echo -e \"import cartopy\nfor s in ('c', 'l', 'i', 'h', 'f'): cartopy.io.shapereader.gshhs(s)\" | python"
-
-# Cache landmask generation
-RUN /bin/bash -c "echo -e \"import opendrift_landmask_data as old\nold.Landmask()\" | python"
-
 # Install opendrift
 ADD . /code
 RUN pip install -e .
@@ -29,23 +23,18 @@ RUN pip install -e .
 # Test installation
 RUN /bin/bash -c "echo -e \"import opendrift\" | python"
 
-# Copy farm files into container
-WORKDIR /farms
+# Install wget and erddapy
+RUN pip install --user -r required.txt
 
-COPY ["./farms/*", "./"]
-
-# Copy Service Module code and YAML file into container
+# Add Service Module files
 WORKDIR /usr/src/app
-
 COPY ["SM-R1.py", "./"]
 COPY ["R1.yaml", "./"]
-COPY ["Pilot-8-seafloor-depth.nc", "./"]
+COPY ["Pilot-*-seafloor-depth.nc", "./"]
+COPY ["landmask.*", "./"]
 
-# Create output directories
-WORKDIR /usr/src/app/OUTPUT
-WORKDIR /usr/src/app/OUTPUT/FLOATS
-WORKDIR /usr/src/app/OUTPUT/HEAT
-WORKDIR /usr/src/app
+# Replace OpenDrift's code with Service Module's code
+COPY ["basemodel.py", "/code/opendrift/models/"]
+COPY ["reader_netCDF_CF_generic.py", "/code/opendrift/readers/"]
 
-# Run Service Module code
 ENTRYPOINT ["python", "/usr/src/app/SM-R1.py"]
