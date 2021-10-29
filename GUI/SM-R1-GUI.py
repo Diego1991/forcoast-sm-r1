@@ -51,7 +51,7 @@ class Root(tk.Tk):
         self.resizable(0, 0)
                
         # Number of floats
-        self.n = 100000
+        self.n = 10000
         
         # Initialize plotting handles
         self.point, self.points, self.polybed = [], [], []

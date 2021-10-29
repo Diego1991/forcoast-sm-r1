@@ -128,7 +128,7 @@ def main():
     # Number of floats. This number largely determines the amount of 
     # computational effort required to run the particle-tracking
     # simulation. In a powerful server, I'd suggest to use 100,000.
-    n = 100000    
+    n = 10000    
     
     # If area seeding has been selected, process farming areas file.
     if options['seed'] == 'area': bed = process_bedfile(options['file'])                  
@@ -158,8 +158,7 @@ def main():
         raise ValueError('Service Module R1 not implemented for this Pilot yet')           
         
     elif int(options['pilot']) == 2: # SPAIN
-        print("Only surface level available at Pilot-2. " +
-              "Setting level to 'surface' anyway")
+        
         Z = 0
         
         from opendrift.readers import reader_ROMS_native
@@ -174,13 +173,12 @@ def main():
         # is to ensure that the latest available file is used.
         if os.path.exists('tmp/' + f):
             os.remove('tmp/' + f)
-        # Download from EuskOOS
-        print('Downloading ' + url + '...')  
+        # Download from EuskOOS       
         while True:
             try:
                 ocn = wget.download(url, out = 'tmp/' + f); break
             except ConnectionResetError:
-                print('Error downloading file. Trying again...')      
+                pass    
         with Dataset(ocn, 'a') as nc:
             timenc = nc.variables['time']
             timenc.units = 'seconds since 2021-01-01 00:00:00'
