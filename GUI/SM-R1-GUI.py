@@ -154,8 +154,8 @@ class Root(tk.Tk):
             self.dt = 60 
            
             ''' Read from ROMS Galway Bay '''
-            
-            self.ocn = 'http://milas.marine.ie/thredds/dodsC/IMI_ROMS_HYDRO/GALWAY_BAY_NATIVE_70M_8L_1H/COMBINED_AGGREGATION'
+
+            self.ocn = 'http://milas.marine.ie/thredds/dodsC/IMI_ROMS_HYDRO/GALWAY_BAY_NATIVE_70M_8L_1H/AGGREGATE'
             with Dataset(self.ocn, 'r') as nc:
                 # Read longitude
                 self.x = nc.variables['lon_rho'][:]
