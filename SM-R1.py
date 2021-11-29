@@ -1,7 +1,9 @@
 import argparse
+import cartopy.crs as ccrs
 from datetime import date, datetime, timedelta
 from math import isnan
 from matplotlib.path import Path
+import matplotlib.pyplot as plt
 from netCDF4 import Dataset
 import numpy as np
 from opendrift.models.oceandrift import OceanDrift
@@ -12,6 +14,7 @@ import re
 import requests
 from shapely.geometry import Polygon, Point
 import wget
+import util
 import xarray as xr
 import yaml
 
@@ -128,7 +131,7 @@ def main():
     # Number of floats. This number largely determines the amount of 
     # computational effort required to run the particle-tracking
     # simulation. In a powerful server, I'd suggest to use 100,000.
-    n = 10000    
+    n = 1000   
     
     # If area seeding has been selected, process farming areas file.
     if options['seed'] == 'area': bed = process_bedfile(options['file'])                  
@@ -410,20 +413,49 @@ def main():
                   "the CLI version is being used. "); return
                         
     ''' Read from OpenDrift output file '''
+    print('Starting post-processing...')
     with Dataset(file, 'r') as nc:
+        print('\tReading longitude from OpenDrift...')
         LON = nc.variables['lon'][:]
-        LAT = nc.variables['lat'][:]
+        print('\tReading latitude from OpenDrift...')
+        LAT = nc.variables['lat'][:]        
+        print('\tReading time from OpenDrift...')
         TIME = nc.variables['time'][:]
     
-    ''' Calculate heatmaps '''            
+    ''' Graphical output: floats '''  
+    fig, ax = util.osm_image(x_grid, y_grid)  
+    for i, t in enumerate(TIME):        
+        lon_t, lat_t = LON[:, i], LAT[:, i]
+        floats = ax.plot(lon_t, lat_t, 'ko', mfc='red', ms=6,
+            transform=ccrs.PlateCarree())
+        fecha = datetime.fromtimestamp(t).strftime('%d-%b-%Y %H:%M')
+        ax.set_title(fecha)
+        print('   Saving floats figure for time ' + fecha)
+        plt.savefig(f'OUTPUT/FLOATS/F{fecha}.png'.replace('-',''). \
+            replace(':','').replace(' ',''), dpi=300, bbox_inches='tight')
+        line = floats.pop(0)
+        line.remove()
+       
+    print(' ')
+    ''' Graphical output: density maps '''
     HEAT = np.zeros((len(TIME), len(y_grid), len(x_grid)))
-    for i, t in enumerate(TIME):                 
+    for i, t in enumerate(TIME):        
         lon_t, lat_t = LON[:, i], LAT[:, i]
         for x, y in zip(lon_t, lat_t):
             index_x = np.argmax(x < x_grid) - 1
             index_y = np.argmax(y < y_grid) - 1
-            HEAT[i, index_y, index_x] += 1            
+            HEAT[i, index_y, index_x] += 1  
+        heat = HEAT[i, :, :]
+        heat = np.ma.masked_where(heat==0, heat)
+        fig, ax = util.osm_image(x_grid, y_grid, data=heat)           
+        fecha = datetime.fromtimestamp(t).strftime('%d-%b-%Y %H:%M')
+        ax.set_title(fecha)
+        print('   Saving heatmap figure for time ' + fecha)
+        plt.savefig(f'OUTPUT/HEAT/H{fecha}.png'.replace('-',''). \
+            replace(':','').replace(' ',''), dpi=300, bbox_inches='tight')
+        plt.close(fig)
         
+    print(' ')
     ''' Calculate LET (Local Exposure Time; Du et al., 2020) '''
     cnt = np.zeros((len(y_grid), len(x_grid)))
     acm = np.zeros((len(y_grid), len(x_grid)))   
@@ -437,7 +469,13 @@ def main():
                 Index_x, Index_y = index_x, index_y
                 cnt[Index_y, Index_x] += 1
             acm[Index_y, Index_x] += 1
-    LET = np.divide(acm, cnt)                
+    LET = np.divide(acm, cnt)    
+    fig, ax = util.osm_image(x_grid, y_grid, data=LET, notnorm=True)
+    ax.set_title('Local Exposure Time [h]')
+    print('   Saving heatmap figure for Local Exposure Time')
+    plt.savefig('OUTPUT/HEAT/LET.png', dpi=300, bbox_inches='tight')
+    plt.close(fig)
+                
         
     ''' Save heatmaps and LET into NetCDF '''
     file = r'./OUTPUT/HEAT/FORCOAST-SM-R1-' + \
