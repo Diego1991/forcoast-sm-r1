@@ -2,8 +2,6 @@
 
 FROM continuumio/miniconda3
 
-RUN git clone https://github.com/Opendrift/opendrift.git
-
 ENV DEBIAN_FRONTEND noninteractive
 ENV PATH /code/opendrift/opendrift/scripts:$PATH
 
@@ -15,7 +13,7 @@ RUN conda config --add channels conda-forge
 RUN conda config --add channels opendrift
 
 # Install opendrift environment into base conda environment
-COPY opendrift/environment.yml .
+COPY environment.yml .
 RUN /opt/conda/bin/conda env update -n base -f environment.yml
 
 # Install opendrift
