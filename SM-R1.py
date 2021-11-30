@@ -1,4 +1,5 @@
 import argparse
+from bulletin_script import bulletin
 import cartopy.crs as ccrs
 from datetime import date, datetime, timedelta
 from math import isnan
@@ -475,7 +476,7 @@ def main():
     LET = np.divide(acm, cnt)    
     fig, ax = util.osm_image(x_grid, y_grid, data=LET, notnorm=True)
     ax.set_title('Local Exposure Time [h]')
-    print('   Saving heatmap figure for Local Exposure Time')
+    print('   Saving figure for Local Exposure Time')
     plt.savefig('OUTPUT/HEAT/LET.png', dpi=300, bbox_inches='tight')
     plt.close(fig)
                 
@@ -509,6 +510,9 @@ def main():
         let = nc.createVariable('LET', 'f4', dimensions=('lat', 'lon'))
         let.long_name = 'local exposure time'
         let[:] = LET
+        
+    ''' Create bulletin '''
+    bulletin()
     
 if __name__ == "__main__":
     main()    
