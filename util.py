@@ -6,8 +6,9 @@ import io
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
+from scipy.spatial import ConvexHull
 from urllib.request import urlopen, Request
-
+from matplotlib.path import Path
 
 def image_spoof(self, tile):
     ''' This function reformats web requests from OSM for cartopy
@@ -77,13 +78,23 @@ def osm_image(x, y, data=None, style='satellite', notnorm=False):
 
     return fig, ax
 
-def save_image(root, fig, name, fmt, n):    
-    try:
-        if n:
-            fig.savefig(f'{name}({n}){fmt}', dpi=300, bbox_inches='tight')
-            return f'{name}({n}){fmt}'
-        else:
-            fig.savefig(f'{name}{fmt}', dpi=300, bbox_inches='tight')
-            return f'{name}{fmt}'
-    except OSError:
-        n += 1; return save_image(root, fig, name, fmt, n)
+def mask_array(lon, lat, data):
+    ''' This function applies a mask where the heat map (count) is 0, 
+        but preserving a convex shape in the non-masked values. This
+        is necessary to produce a project contour plot '''
+    # Find indexes of non-zero data, which should be preserved
+    wy, wx = np.nonzero(data)
+    # Get coordinates of points with non-zero data
+    x, y = lon[wy, wx].filled(), lat[wy, wx].filled()
+    # Get Nx2 array of coordinates of points with non-zero data
+    points = np.vstack((x, y)).T
+    # Get convex hull around non-zero data
+    hull = ConvexHull(points)
+    # Get perimeter of convex hull
+    hull_path = Path( points[hull.vertices] )
+    # Produce an array with all the points within the model's domain
+    lon, lat = lon.flatten(), lat.flatten(); points = np.vstack((lon, lat)).T
+    # Create mask for points outside convex hull
+    mask = np.reshape(~hull_path.contains_points(points), data.shape)
+    # Apply mask on data and return
+    return np.ma.masked_where(mask, data)

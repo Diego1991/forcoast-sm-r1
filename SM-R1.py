@@ -416,16 +416,13 @@ def main():
                   "mode. Please check user's selections in the GUI, or YAML file if " + \
                   "the CLI version is being used. "); return
                         
-    ''' Read from OpenDrift output file '''
-    print('Starting post-processing...')
-    with Dataset(file, 'r') as nc:
-        print('\tReading longitude from OpenDrift...')
+    ''' Read from OpenDrift output file '''    
+    with Dataset(file, 'r') as nc:        
         LON = nc.variables['lon'][:]
-        print('\tReading latitude from OpenDrift...')
         LAT = nc.variables['lat'][:]        
-        print('\tReading time from OpenDrift...')
         TIME = nc.variables['time'][:]
     
+    print(' ')
     ''' Graphical output: floats '''  
     fig, ax = util.osm_image(x_grid, y_grid)  
     for i, t in enumerate(TIME):        
@@ -440,7 +437,7 @@ def main():
         line = floats.pop(0)
         line.remove()
        
-    print(' ')
+    print(' '); [lon_grid, lat_grid] = np.meshgrid(x_grid, y_grid)
     ''' Graphical output: density maps '''
     HEAT = np.zeros((len(TIME), len(y_grid), len(x_grid)))
     for i, t in enumerate(TIME):        
@@ -450,7 +447,8 @@ def main():
             index_y = np.argmax(y < y_grid) - 1
             HEAT[i, index_y, index_x] += 1  
         heat = HEAT[i, :, :]
-        heat = np.ma.masked_where(heat==0, heat)
+        # Masking 0-values and preventing any topological errors...
+        heat = util.mask_array(lon_grid, lat_grid, heat)
         fig, ax = util.osm_image(x_grid, y_grid, data=heat)           
         fecha = datetime.fromtimestamp(t).strftime('%d-%b-%Y %H:%M')
         ax.set_title(fecha)
