@@ -142,7 +142,7 @@ def bulletin():
     draw.text((img_final_heatmap_new_Width + img_initial_heatmap_new_Width - 670, img_logo_new_Height / 5), ('Bulletin generated on: ' + filecreated), font=font_2,fill=(0,0,0,255))
     # draw.text((img_violin_Width + img_map_Width - 750, img_logo_new_Height / 2.1), ('Release date: ' + rdate), font=font_1,fill=(0,0,0,255))
     # draw.text((img_violin_Width + img_map_Width - 750, img_logo_new_Height / 4), ('Area: ' + farea), font=font_1,fill=(0,0,0,255))
-    draw.text((img_final_heatmap_new_Width + img_initial_heatmap_new_Width - 670, img_logo_new_Height / 5), ('x = ' + x + ' ' + 'y = ' + y), font=font_1,fill=(0,0,0,255))
+    # draw.text((img_final_heatmap_new_Width + img_initial_heatmap_new_Width - 670, img_logo_new_Height / 5), ('x = ' + x + ' ' + 'y = ' + y), font=font_1,fill=(0,0,0,255))
     
     
     newImg.save("OUTPUT/BULLETIN/bulletin.png", quality = 95)
