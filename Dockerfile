@@ -32,6 +32,8 @@ COPY ["SM-R1.py", "./"]
 COPY ["R1.yaml", "./"]
 COPY ["Pilot-*-seafloor-depth.nc", "./"]
 COPY ["landmask.*", "./"]
+COPY ["*.png", "./"]
+COPY ["*.ttf", "./"]
 
 # Replace OpenDrift's code with Service Module's code
 COPY ["basemodel.py", "/code/opendrift/models/"]
