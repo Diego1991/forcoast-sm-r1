@@ -36,10 +36,13 @@ class Root(tk.Tk):
             os.mkdir('OUTPUT')
             os.mkdir('OUTPUT/FLOATS')
             os.mkdir('OUTPUT/HEAT')
+            os.mkdir('OUTPUT/BULLETIN')
         if not os.path.isdir('OUTPUT/FLOATS'):
             os.mkdir('OUTPUT/FLOATS')
         if not os.path.isdir('OUTPUT/HEAT'):
             os.mkdir('OUTPUT/HEAT')
+        if not os.path.isdir('OUTPUT/BULLETIN'):
+            os.mkdir('OUTPUT/BULLETIN')
         
         ''' Get Pilot number '''
         with open('pilot.txt', 'r') as fid:

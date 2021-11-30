@@ -75,10 +75,13 @@ def main():
         os.mkdir('OUTPUT')
         os.mkdir('OUTPUT/FLOATS')
         os.mkdir('OUTPUT/HEAT')
+        os.mkdir('OUTPUT/BULLETIN')
     if not os.path.isdir('OUTPUT/FLOATS'):
         os.mkdir('OUTPUT/FLOATS')
     if not os.path.isdir('OUTPUT/HEAT'):
         os.mkdir('OUTPUT/HEAT')
+    if not os.path.isdir('OUTPUT/BULLETIN'):
+        os.mkdir('OUTPUT/BULLETIN')
     
     ''' Argument parser '''
     ap = argparse.ArgumentParser()
