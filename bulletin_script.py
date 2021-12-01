@@ -7,46 +7,41 @@ import glob
 
 def bulletin():
 
-    # rdate = 0
+    area = "not defined"
+    x = "not defined"
+    y = "not defined"
+    durationDays = "not defined"
     
-    # argv = sys.argv[1:]
-    # try:
-    #     opts, args = getopt.getopt(argv,"p:x:y:")
-    # except getopt.GetoptError:
-    #     sys.exit(2)
-    # for opt, arg in opts:
-    #     if opt in ("-p", "--pilot"):
-    #         pilot = arg
-    #     elif opt in ("-x"):
-    #         x = arg
-    #     elif opt in ("-y"):
-    #         y = arg
-    #     elif opt in ("-s"):
-    #         # AC 10112021 - Not sure this is a safe parsing method .. Same below.
-    #         exec('source = '+arg)
-    #     elif opt in ("-c"):
-    #         sourcecount = int(arg)
-    #     elif opt in ("-t"):
-    #         exec('target = '+arg)
-    #     elif opt in ("-T"):
-    #         rdate = arg
-    #     elif opt in ("-k"):
-    #         targetcount = int(arg)
-    #     elif opt in ("-d"): # AC 10112021 shouldn't be needed ? 
-    #         datadir = arg
-    # USER_YAML_FILE = '../usr/' + USER_YAML_FILE + '/config/config.yaml'
-    # print ('yaml file is', USER_YAML_FILE)
-    
-    # with open(USER_YAML_FILE) as f:
-    #     data = yaml.load(f, Loader=yaml.FullLoader)
-    #     figdir        = '../usr/'+data['username'] +'/output/target_' + str(targetcount)+'_source_' + str(sourcecount)+'/'
-        
-    #     if rdate == 0:
-    #         rdate = data['sdate']
-            
-    #     farea=data['experiment']
-    #     #fx0=data['x0']
-    #     #fy0=data['y0']
+    argv = sys.argv[1:]
+    try:
+        opts, args = getopt.getopt(argv,"p:x:y:d:")
+    except getopt.GetoptError:
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt in ("-p", "--pilot"):
+            if arg == "1":
+                area = "Sado Estuary"
+            elif arg == "2":
+                area = "Bay of Biscay"
+            elif arg == "3":
+                area = "Western Black Sea"
+            elif arg == "4":
+                area = "Southern North Sea"
+            elif arg == "5":
+                area = "Galway Bay"
+            elif arg == "6":
+                area = "Limfjord"
+            elif arg == "7":
+                area = "Western Black Sea"
+            elif arg == "8":
+                area = "Northern Adriatic Sea"
+        elif opt in ("-x", "--lon"):
+            x = arg
+        elif opt in ("-y", "--lat"):
+            y = arg
+        elif opt in ("-d", "--duration"):
+            duration = float(arg)
+            durationDays = duration / 24        
 
     
     heatmaps = glob.glob('./OUTPUT/HEAT/H*.png')
@@ -66,9 +61,6 @@ def bulletin():
     img_logo_Width                , img_logo_Height                 = img_logo.size
     img_footer_Width              , img_footer_Height               = img_footer.size
     
-   
-    
-    # Resize the logo
     
     margin = 25
     
@@ -126,33 +118,35 @@ def bulletin():
     
     
     font_path_1 = "ariali.ttf"
-    font_1 = ImageFont.truetype(font_path_1, 36)
+    font_1 = ImageFont.truetype(font_path_1, 40)
     
     font_path_2 = "ariali.ttf"
     font_2 = ImageFont.truetype(font_path_2, 30)
     
     font_path_3 = "arialbd.ttf"
-    font_3 = ImageFont.truetype(font_path_3, 70)
+    font_3 = ImageFont.truetype(font_path_3, 76)
     
-    # # print("last modified: %s" % time.ctime(os.path.getmtime(file)))
+    font_path_4 = "arial.ttf"
+    font_4 = ImageFont.truetype(font_path_4, 64)
+    
+    font_path_5 = "arial.ttf"
+    font_5 = ImageFont.truetype(font_path_5, 42)
+    
+   
     filecreated = time.ctime(os.path.getctime('./OUTPUT/HEAT/LET.png'))
     
     draw = PIL.ImageDraw.Draw(newImg)
-    draw.text(((img_logo_new_Width + 250, img_logo_new_Height / 2.5)), ('CONTAMINANT SOURCE RETRIEVAL SERVICE'), font=font_3,fill=(23,111,176,255))
-    draw.text((img_final_heatmap_new_Width + img_initial_heatmap_new_Width - 670, img_logo_new_Height / 5), ('Bulletin generated on: ' + filecreated), font=font_2,fill=(0,0,0,255))
-    # draw.text((img_violin_Width + img_map_Width - 750, img_logo_new_Height / 2.1), ('Release date: ' + rdate), font=font_1,fill=(0,0,0,255))
-    # draw.text((img_violin_Width + img_map_Width - 750, img_logo_new_Height / 4), ('Area: ' + farea), font=font_1,fill=(0,0,0,255))
-    # draw.text((img_final_heatmap_new_Width + img_initial_heatmap_new_Width - 670, img_logo_new_Height / 5), ('x = ' + x + ' ' + 'y = ' + y), font=font_1,fill=(0,0,0,255))
+    draw.text(((img_logo_new_Width + 180, img_logo_new_Height / 2.4)), ('CONTAMINANT SOURCE RETRIEVAL SERVICE'), font=font_3,fill=(23,111,176,255))
+    draw.text((img_final_heatmap_new_Width + img_initial_heatmap_new_Width - 670, img_logo_new_Height / 6.3), ('Bulletin generated on: ' + filecreated), font=font_2,fill=(0,0,0,255))
+    draw.text((img_final_heatmap_new_Width + img_initial_heatmap_new_Width - 670, img_logo_new_Height / 2.2), ('Area: ' + area), font=font_1,fill=(0,0,0,255))
+    draw.text((img_final_heatmap_new_Width + img_initial_heatmap_new_Width - 670, img_logo_new_Height / 1.5), ('Your coordinates x = ' + x + '°; ' + 'y = ' + y + '°'), font=font_1,fill=(0,0,0,255))
+    draw.text((img_final_heatmap_new_Width + img_initial_heatmap_new_Width - 670, img_logo_new_Height / 1.15), ('Simulation length: ' + str(round(durationDays,2)) + ' days'), font=font_1,fill=(0,0,0,255))
+    
+    draw.text((830, 560), ('FINAL PROBABILITY MAP'), font=font_4,fill=(0,0,0,255))
+    draw.text((2690, 380), ('INITIAL SITUATION'), font=font_5,fill=(0,0,0,255))
+    draw.text((2585, 1062), ('FINAL PARTICLES LOCATION'), font=font_5,fill=(0,0,0,255))
+    draw.text((2643, 1838), ('EXPOSURE OVER TIME'), font=font_5,fill=(0,0,0,255))
     
     
     newImg.save("OUTPUT/BULLETIN/bulletin.png", quality = 95)
-    
-    '''
-    # draw = PIL.ImageDraw.Draw(img)
-    # draw.text((100, 100),"Sample Text")
-    # img1.paste(img2)
-    # img1.save("combined.png", quality=45)
-    '''
-    
-
-# bulletin() # TO COMMENT WHEN MERGINING IN MAIN    
+      
