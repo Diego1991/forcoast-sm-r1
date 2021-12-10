@@ -10,11 +10,7 @@ x = "not defined"
 y = "not defined"
 durationDays = "not defined"
 
-print("test")
-
 argv = sys.argv[1:]
-
-print(argv)
 
 opts, args = getopt.getopt(argv,"p:x:y:d:")
 
@@ -44,8 +40,6 @@ for opt, arg in opts:
         duration = float(arg)
         durationDays = duration / 24        
 
-print("test2")
-
 heatmaps = glob.glob('./OUTPUT/HEAT/H*.png')
 countmaps = glob.glob('./OUTPUT/FLOATS/F*.png')
 
@@ -62,7 +56,6 @@ img_final_countmap_Width      , img_final_countmap_Height       = img_final_coun
 img_final_exposuremap_Width   , img_final_exposuremap_Height    = img_final_exposuremap.size
 img_logo_Width                , img_logo_Height                 = img_logo.size
 img_footer_Width              , img_footer_Height               = img_footer.size
-
 
 margin = 25
 
@@ -82,7 +75,6 @@ img_final_heatmap_height_percent = (img_final_heatmap_new_Height / float(img_fin
 img_final_heatmap_new_Width = int((float(img_final_heatmap.size[0]) * float(img_final_heatmap_height_percent)))
 img_final_heatmap_new = img_final_heatmap.resize((int(img_final_heatmap_new_Width), int(img_final_heatmap_new_Height)), PIL.Image.NEAREST)
 
-
 # Resize the three maps on the right side
 
 img_initial_heatmap_new_Height = int(img_final_heatmap_new_Height / 3)
@@ -91,21 +83,17 @@ img_initial_heatmap_height_percent = (img_initial_heatmap_new_Height / float(img
 img_initial_heatmap_new_Width = int((float(img_initial_heatmap.size[0]) * float(img_initial_heatmap_height_percent)))
 img_initial_heatmap_new = img_initial_heatmap.resize((int(img_initial_heatmap_new_Width), int(img_initial_heatmap_new_Height)), PIL.Image.NEAREST)
 
-
 img_final_countmap_new_Width = img_initial_heatmap_new_Width
 
 img_final_countmap_width_percent = (img_final_countmap_new_Width / float(img_final_countmap.size[0]))
 img_final_countmap_new_Height = int((float(img_final_countmap.size[1]) * float(img_final_countmap_width_percent)))
 img_final_countmap_new = img_final_countmap.resize((int(img_final_countmap_new_Width), int(img_final_countmap_new_Height)), PIL.Image.NEAREST)
 
-
 img_final_exposuremap_new_Height = int(img_final_heatmap_new_Height / 3)
 
 img_final_exposuremap_height_percent = (img_final_exposuremap_new_Height / float(img_final_exposuremap.size[1]))
 img_final_exposuremap_new_Width = int((float(img_final_exposuremap.size[0]) * float(img_final_exposuremap_height_percent)))
 img_final_exposuremap_new = img_final_exposuremap.resize((int(img_final_exposuremap_new_Width), int(img_final_exposuremap_new_Height)), PIL.Image.NEAREST)
-
-print("test 3")
 
 # Generate the new combined image
 
@@ -117,8 +105,6 @@ newImg.paste(img_initial_heatmap_new        , (margin + img_final_heatmap_new_Wi
 newImg.paste(img_final_countmap_new         , (margin + img_final_heatmap_new_Width            , margin + img_logo_new_Height + int(img_initial_heatmap_new_Height)))
 newImg.paste(img_final_exposuremap_new      , (margin + img_final_heatmap_new_Width            , margin + img_logo_new_Height + int(img_initial_heatmap_new_Height) + img_final_countmap_new_Height))
 newImg.paste(img_footer                     , (margin + int((img_final_heatmap_new_Width + img_initial_heatmap_new_Width) / 2 - (img_footer_Width /2)), margin + img_logo_new_Height + img_final_heatmap_new_Height))
-
-
 
 font_path_1 = "ariali.ttf"
 font_1 = ImageFont.truetype(font_path_1, 40)
@@ -135,8 +121,6 @@ font_4 = ImageFont.truetype(font_path_4, 64)
 font_path_5 = "arial.ttf"
 font_5 = ImageFont.truetype(font_path_5, 42)
 
-print("test 4")
-
 filecreated = time.ctime(os.path.getctime('./OUTPUT/HEAT/LET.png'))
 
 draw = PIL.ImageDraw.Draw(newImg)
@@ -150,8 +134,6 @@ draw.text((830, 560), ('FINAL PROBABILITY MAP'), font=font_4,fill=(0,0,0,255))
 draw.text((2690, 380), ('INITIAL SITUATION'), font=font_5,fill=(0,0,0,255))
 draw.text((2585, 1062), ('FINAL PARTICLES LOCATION'), font=font_5,fill=(0,0,0,255))
 draw.text((2643, 1838), ('EXPOSURE OVER TIME'), font=font_5,fill=(0,0,0,255))
-
-print("test 5")
 
 newImg.save("./OUTPUT/BULLETIN/bulletin.png", quality = 95)
       
