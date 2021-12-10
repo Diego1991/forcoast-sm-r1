@@ -29,14 +29,20 @@ RUN pip install --user -r required.txt
 # Add Service Module files
 WORKDIR /usr/src/app
 COPY ["SM-R1.py", "./"]
+COPY ["run.sh", "./"]
 COPY ["R1.yaml", "./"]
 COPY ["Pilot-*-seafloor-depth.nc", "./"]
 COPY ["landmask.*", "./"]
 COPY ["*.png", "./"]
 COPY ["*.ttf", "./"]
+COPY ["required.txt", "./"]
+COPY ["bulletin_script.py", "./"]
+
+RUN chmod 755 /usr/src/app/run.sh
 
 # Replace OpenDrift's code with Service Module's code
 COPY ["basemodel.py", "/code/opendrift/models/"]
 COPY ["reader_netCDF_CF_generic.py", "/code/opendrift/readers/"]
 
-ENTRYPOINT ["python", "/usr/src/app/SM-R1.py"]
+ENTRYPOINT ["/usr/src/app/run.sh"]
+# ENTRYPOINT ["bash", "-c"]

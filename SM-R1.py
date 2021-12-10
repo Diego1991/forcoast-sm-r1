@@ -1,5 +1,4 @@
 import argparse
-from bulletin_script import bulletin
 import cartopy.crs as ccrs
 from datetime import date, datetime, timedelta
 from math import isnan
@@ -509,8 +508,6 @@ def main():
         let.long_name = 'local exposure time'
         let[:] = LET
         
-    ''' Create bulletin '''
-    bulletin()
     
 if __name__ == "__main__":
     main()    
