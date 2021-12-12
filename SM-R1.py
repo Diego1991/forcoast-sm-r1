@@ -2,6 +2,7 @@ import argparse
 import cartopy.crs as ccrs
 from datetime import date, datetime, timedelta
 from math import isnan
+import matplotlib
 from matplotlib.path import Path
 import matplotlib.pyplot as plt
 from netCDF4 import Dataset
@@ -13,10 +14,13 @@ from random import random, uniform
 import re
 import requests
 from shapely.geometry import Polygon, Point
+from shapely.geos import TopologicalError
 import wget
 import util
 import xarray as xr
 import yaml
+
+font = {'size' : 18}; matplotlib.rc('font', **font)
 
 def process_bedfile(file):
     ''' Get farming polygons from user's input file '''
@@ -134,7 +138,7 @@ def main():
     # Number of floats. This number largely determines the amount of 
     # computational effort required to run the particle-tracking
     # simulation. In a powerful server, I'd suggest to use 100,000.
-    n = 1000   
+    n = 10000
     
     # If area seeding has been selected, process farming areas file.
     if options['seed'] == 'area': bed = process_bedfile(options['file'])                  
@@ -166,12 +170,11 @@ def main():
     elif int(options['pilot']) == 2: # SPAIN
         
         Z = 0
-        
-        from opendrift.readers import reader_ROMS_native
-        
+                
         # Opendrift time step [s] - depends on model resolution
         dt = 600 
         
+        ''' Read from EuskOOS '''        
         f = 'croco_original_exp.nc'
         # Set url to download from
         url = 'https://thredds.euskoos.eus/thredds/fileServer/testAll/' + f
@@ -199,7 +202,8 @@ def main():
         offset = datetime(2021, 1, 1)
         # Create time list
         times = [offset + timedelta(seconds=i) for i in times]                         
-        # Generate reader for physics 
+        # Generate reader for physics         
+        from opendrift.readers import reader_ROMS_native
         ocean = reader_ROMS_native.Reader(ocn)  
         # Add readers          
         Opendrift.add_reader(ocean)          
@@ -210,56 +214,61 @@ def main():
         raise ValueError('Service Module R1 not implemented for this Pilot yet')
         
     elif int(options['pilot']) == 4: # BELGIUM
+    
         from erddapy.url_handling import urlopen                
         from pathlib import Path
         from urllib.parse import urlparse
         
         # Opendrift time step [s] - depends on model resolution
         dt = 600       
-        # Get present date    
+       
+        ''' Read from North Sea '''
         today = date.today()
-        # Read from the Royal Belgian Institute of Natural Sciences ERDDAP Server 
-        itime = '(' + (today - timedelta(days=30)).strftime('%Y-%m-%dT%H:%M:%SZ') + ')'            
+        # Read from last 30 days to latest forecast
+        itime = '(' + (today - timedelta(days=30)).strftime('%Y-%m-%dT%H:%M:%SZ') + ')'        
+        # Get url to ERDDAP
         root = 'https://erddap.naturalsciences.be/erddap/griddap/NOS_HydroState_V1.nc?'
         url = root + levelstr + '_baroclinic_eastward_sea_water_velocity' + \
             '[' + itime + ':last][(48.5):1:(57.0)][(-4.0):1:(9.0)],' + \
-                          levelstr + '_baroclinic_northward_sea_water_velocity' + \
-             '[' + itime + ':last][(48.5):1:(57.0)][(-4.0):1:(9.0)]'
+                     levelstr + '_baroclinic_northward_sea_water_velocity' + \
+            '[' + itime + ':last][(48.5):1:(57.0)][(-4.0):1:(9.0)]'                  
+        # Start request
         data = urlopen(url=url)  
-        with Dataset(Path(urlparse(url).path).name, 
-                     memory=data.read()) as nc:
-            # Read longitude
-            x_grid = nc.variables['longitude'][:]
-            # Read latitude
-            y_grid = nc.variables['latitude'][:]
-            # Read time
-            times = nc.variables['time'][:]
-            # Load as xarray dataset
-            dataset = xr.open_dataset(xr.backends.NetCDF4DataStore(nc))
+        # Open as NetCDF dataset
+        nc = Dataset(Path(urlparse(url).path).name, memory=data.read())
+        # Open xarray dataset
+        dataset = xr.open_dataset(xr.backends.NetCDF4DataStore(nc))
+        # Add time units attribute
+        dataset.variables['time'].attrs['units'] = 'seconds since 1970-01-01T00:00:00Z'
+
+        # Generate reader for landmask
+        mask = reader_shape.Reader.from_shpfiles('landmask.shp')
+        # Generate reader for currents
+        ocean = reader_netCDF_CF_generic.Reader(dataset, name='NOS_HydroState',
+              standard_name_mapping={'surface_baroclinic_eastward_sea_water_velocity': 'x_sea_water_velocity',
+                                     'surface_baroclinic_northward_sea_water_velocity': 'y_sea_water_velocity'
+                                   })
+        # Add reader to OpenDrift model instance
+        Opendrift.add_reader([mask, ocean])     
+        
+        # Read longitude
+        x_grid = nc.variables['longitude'][:]
+        # Read latitude
+        y_grid = nc.variables['latitude'][:]
+        # Read time
+        times = nc.variables['time'][:]
         # Time offset
         offset = datetime(1970, 1, 1)
         # Create time list
         times = [offset + timedelta(seconds=i) for i in times]
-        dataset.variables['time'].attrs['units'] = 'seconds since 1970-01-01T00:00:00Z'
-        # Generate reader for physics
-        ocean = reader_netCDF_CF_generic.Reader(dataset, name='NOS_HydroState',
-            standard_name_mapping={levelstr + \
-            '_baroclinic_eastward_sea_water_velocity': 'x_sea_water_velocity',
-                                   levelstr + \
-            '_baroclinic_northward_sea_water_velocity': 'y_sea_water_velocity'
-                                   })
-        # Generate reader for landmask
-        mask = reader_shape.Reader.from_shpfiles('landmask.shp')
-        # Add readers
-        Opendrift.add_reader([mask, ocean])                
            
     elif int(options['pilot']) == 5: # IRELAND   
-        from opendrift.readers import reader_ROMS_native
         
         # Opendrift time step [s] - depends on model resolution
         dt = 60 
-        # Read from ROMS Galway Bay 
-        ocn = 'http://milas.marine.ie/thredds/dodsC/IMI_ROMS_HYDRO/GALWAY_BAY_NATIVE_70M_8L_1H/AGGREGATE'
+        
+        ''' Read from Galway Bay '''
+        ocn = 'http://milas.marine.ie/thredds/dodsC/IMI_ROMS_HYDRO/GALWAY_BAY_NATIVE_70M_8L_1H/COMBINED_AGGREGATION'
         with Dataset(ocn, 'r') as nc:
             # Read longitude
             x = nc.variables['lon_rho'][:]
@@ -272,6 +281,7 @@ def main():
         # Create time list
         times = [offset + timedelta(seconds=i) for i in times]
         # Generate reader for physics 
+        from opendrift.readers import reader_ROMS_native
         ocean = reader_ROMS_native.Reader(ocn)  
         # Add readers          
         Opendrift.add_reader(ocean)          
@@ -279,6 +289,7 @@ def main():
         x_grid, y_grid = x[0, :], y[:, 0]
         
     elif int(options['pilot']) == 6: # DENMARK
+    
         # Opendrift time step [s]
         dt = 60 
         
@@ -324,8 +335,9 @@ def main():
     elif int(options['pilot']) == 8: # ITALY
     
         # Opendrift time step [s] - depends on model resolution
-        dt = 600        
-        # Read from OGS         
+        dt = 600     
+        
+        ''' Read from OGS '''
         url = 'https://dsecho.inogs.it/thredds/catalog/pilot8/model_OGS/RFVL/'
         text = requests.get(url + 'catalog.html').text
         out = re.findall(r'20\d{2}\d{2}\d{2}', text)
@@ -371,8 +383,16 @@ def main():
     ''' Seed elements '''
     idate, edate = fixdate(idate, times), fixdate(edate, times)    
     if options['seed'] == 'point': # point seeding
-        Opendrift.seed_elements(lon=float(options['lon']),
-                                lat=float(options['lat']),
+        lon, lat = float(options['lon']), float(options['lat'])
+        # Check user-selected coordinates are within model boundaries
+        if lon < x_grid.min() or lon > x_grid.max():
+            raise ValueError('Selected coordinates are outside the valid domain.\n' + 
+            f'Please enter a longitude between {x_grid.min()} and {x_grid.max()}')
+        if lat < y_grid.min() or lat > y_grid.max():
+            raise ValueError('Selected coordinates are outside the valid domain.\n' + 
+            f'Please enter a latitude between {y_grid.min()} and {y_grid.max()}')
+        Opendrift.seed_elements(lon=lon,
+                                lat=lat,
                                 z=Z,
                                 number=n,
                                 radius=float(options['radius']),
@@ -385,7 +405,15 @@ def main():
             for p in points:
                 randomt = idate + timedelta(seconds=random()*(edate - idate). \
                     total_seconds())
-                Opendrift.seed_elements(lon=p.x, lat=p.y, z=Z, time=randomt)                        
+                lon, lat = p.x, p.y
+                # Check user-selected coordinates are within model boundaries
+                if lon < x_grid.min() or lon > x_grid.max():
+                    raise ValueError('Selected coordinates are outside the valid domain.\n' + 
+                    f'Please enter a longitude between {x_grid.min()} and {x_grid.max()}')
+                if lat < y_grid.min() or lat > y_grid.max():
+                    raise ValueError('Selected coordinates are outside the valid domain.\n' + 
+                    f'Please enter a latitude between {y_grid.min()} and {y_grid.max()}')
+                Opendrift.seed_elements(lon=lon, lat=lat, z=Z, time=randomt)                        
     
     else:
         raise ValueError("Seed must be either 'point' or 'area'")
@@ -436,21 +464,29 @@ def main():
         line = floats.pop(0)
         line.remove()
        
-    print(' '); [lon_grid, lat_grid] = np.meshgrid(x_grid, y_grid)
+    print(' ')
     ''' Graphical output: density maps '''
     HEAT = np.zeros((len(TIME), len(y_grid), len(x_grid)))
     for i, t in enumerate(TIME):        
+        # Get longitude and latitude of floats for the i-th time step
         lon_t, lat_t = LON[:, i], LAT[:, i]
         for x, y in zip(lon_t, lat_t):
             index_x = np.argmax(x < x_grid) - 1
             index_y = np.argmax(y < y_grid) - 1
             HEAT[i, index_y, index_x] += 1  
+        # Processing i-th heat map
         heat = HEAT[i, :, :]
-        # Masking 0-values and preventing any topological errors...
-        heat = util.mask_array(lon_grid, lat_grid, heat)
-        fig, ax = util.osm_image(x_grid, y_grid, data=heat)           
+        # Mask where there are no floats to keep it transparent and 
+        # show the underlying background satellite image beneath
+        heat = np.ma.masked_where(heat == 0, heat)
+        try:
+            fig, ax = util.osm_image(x_grid, y_grid, data=heat)           
+        except TopologicalError:
+            continue
+        # Add date and time as title
         fecha = datetime.fromtimestamp(t).strftime('%d-%b-%Y %H:%M')
         ax.set_title(fecha)
+        # Save and close figure
         print('   Saving heatmap figure for time ' + fecha)
         plt.savefig(f'OUTPUT/HEAT/H{fecha}.png'.replace('-',''). \
             replace(':','').replace(' ',''), dpi=300, bbox_inches='tight')
@@ -476,8 +512,7 @@ def main():
     print('   Saving figure for Local Exposure Time')
     plt.savefig('OUTPUT/HEAT/LET.png', dpi=300, bbox_inches='tight')
     plt.close(fig)
-                
-        
+                        
     ''' Save heatmaps and LET into NetCDF '''
     file = r'./OUTPUT/HEAT/FORCOAST-SM-R1-' + \
         datetime.now().strftime('%Y%m%d%H%M%S') + '-HEAT.nc'  
@@ -507,7 +542,6 @@ def main():
         let = nc.createVariable('LET', 'f4', dimensions=('lat', 'lon'))
         let.long_name = 'local exposure time'
         let[:] = LET
-        
-    
+            
 if __name__ == "__main__":
-    main()    
+    main()

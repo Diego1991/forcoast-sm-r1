@@ -1,7 +1,7 @@
 options: R1.yaml
 
 # PILOT NUMBER
-pilot: 5
+pilot: 4
 
 # SEEDING MODE. Seeding refers to the release of floats simulating
 # contaminants in the water. These floats move as passive tracers.
@@ -26,9 +26,9 @@ file: ''
 # and a radius [m] of uniform dispersion around the center to add some 
 # uncertainty on the origin of contamination. Example for Galway Bay: 
 
-lon: -9.1
-lat: 53.2
-radius: 500
+lon: 2.5
+lat: 51.5
+radius: 1000
 
 # SEEDING LEVEL. Seed either at the surface or at the bottom. 
 
@@ -38,12 +38,12 @@ level: 'surface'
 # This interval is defined by a time and an uncertainty [h] before
 # and after that time.
 
-time: '2021-11-25 12:00:00'
+time: '2021-12-06 00:00:00'
 uncertainty: 0
 
 # DURATION OF THE RUN. This is the time span [h] of the run.
 
-duration: 12
+duration: 8
 
 # TRACKING MODE. Either backward (-1) to retrieve the source of 
 # contamination, or forward (+1) to determine where the contaminants

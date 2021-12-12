@@ -6,9 +6,7 @@ import io
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
-from scipy.spatial import ConvexHull
 from urllib.request import urlopen, Request
-from matplotlib.path import Path
 
 def image_spoof(self, tile):
     ''' This function reformats web requests from OSM for cartopy
@@ -38,63 +36,53 @@ def osm_image(x, y, data=None, style='satellite', notnorm=False):
         img = cimgt.QuadtreeTiles() # spoofed, downloaded street map
     else:
         print('no valid style')
-
+    
+    # Get radius 
     x0, y0 = x.mean(), y.mean()
     cx = (x.min(), x.min(), x.max(), x.max())
     cy = (y.min(), y.max(), y.max(), y.min())
     radius = sum([distance((y0, x0), (y,x)).m for x, y in zip(cx, cy)])/4
 
     plt.close('all')
-    fig = plt.figure(figsize=(10,10)) # open matplotlib figure
-    ax = plt.axes(projection=img.crs) # project using coordinate reference system (CRS) of street map
+    # Open matplotlib figure
+    fig = plt.figure(figsize=(10, 10)) 
+    # Project using coordinate reference system (CRS) of street map
+    ax = plt.axes(projection=img.crs) 
     data_crs = ccrs.PlateCarree()
 
+    # Find appropriate scale
     scale = int(120/np.log(radius))
     scale = (scale<20) and scale or 19
 
+    # Add OSM with zoom specification
+    ax.add_image(img, int(scale)) 
     
-    ax.add_image(img, int(scale)) # add OSM with zoom specification
-    
+    # Set grid lines
     gl = ax.gridlines(draw_labels=True, crs=data_crs,
                         color='k',lw=0.5)
-    if data is not None:
-        # data = np.ma.masked_where(data==0, data)
-        ax.contourf(x, y, data, transform=ccrs.PlateCarree(), cmap='YlOrRd')        
+    if data is not None:    
+        ax.pcolor(x, y, data, transform=ccrs.PlateCarree(), 
+            cmap='YlOrRd', shading='flat')    
+        # Set colorbar    
         m = plt.cm.ScalarMappable(cmap='YlOrRd')
         if notnorm:
+            # This is for Local Exposure Time
             m.set_clim(0, np.nanmax(data))
-            fig.colorbar(m, ax=ax, label='hours')
+            P = ax.get_position(); P = [P.x1 + .02, P.y0,  .03, P.height] 
+            fig.colorbar(m, cax=fig.add_axes(P), label='hours')
         else:
-            fig.colorbar(m, ax=ax, label='')
+            # This is for Heat Maps
+            P = ax.get_position(); P = [P.x1 + .02, P.y0,  .03, P.height] 
+            fig.colorbar(m, cax=fig.add_axes(P), label='')
     
-        
-    extent = [x.min(), x.max(), y.min(), y.max()]    
-    ax.set_extent(extent) # set extents
-    
+    # Set axis limits        
+    ax.set_extent( [x.min(), x.max(), y.min(), y.max()] ) 
+    # Delete axes ticks on top and right
     gl.top_labels = False
     gl.right_labels = False
+    # Format axes tick labels 
     gl.xformatter = cartopy.mpl.gridliner.LONGITUDE_FORMATTER
     gl.yformatter = cartopy.mpl.gridliner.LATITUDE_FORMATTER
-
+    
+    # Return figure and axes to be saved as .png file
     return fig, ax
-
-def mask_array(lon, lat, data):
-    ''' This function applies a mask where the heat map (count) is 0, 
-        but preserving a convex shape in the non-masked values. This
-        is necessary to produce a project contour plot '''
-    # Find indexes of non-zero data, which should be preserved
-    wy, wx = np.nonzero(data)
-    # Get coordinates of points with non-zero data
-    x, y = lon[wy, wx].filled(), lat[wy, wx].filled()
-    # Get Nx2 array of coordinates of points with non-zero data
-    points = np.vstack((x, y)).T
-    # Get convex hull around non-zero data
-    hull = ConvexHull(points)
-    # Get perimeter of convex hull
-    hull_path = Path( points[hull.vertices] )
-    # Produce an array with all the points within the model's domain
-    lon, lat = lon.flatten(), lat.flatten(); points = np.vstack((lon, lat)).T
-    # Create mask for points outside convex hull
-    mask = np.reshape(~hull_path.contains_points(points), data.shape)
-    # Apply mask on data and return
-    return np.ma.masked_where(mask, data)
