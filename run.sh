@@ -36,7 +36,7 @@ echo "-m    Tracking mode: either -1 (backward) or +1 (forward)"
 ARGS=""
 BULL=""
 
-while getopts ":d:f:h:l:m:p:r:s:t:u:x:y:" option; do
+while getopts ":hd:f:l:m:p:r:s:t:u:x:y:" option; do
      case $option in
           h)
              Help
