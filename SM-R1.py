@@ -106,14 +106,14 @@ def main():
     ap.add_argument('-r', '--radius',   
         help="Uncertainty radius, used only if 'point' seeding has been selected")
     ap.add_argument('-t', '--time',
-        help="Seeding time with format 'yyyy-mm-dd HH:MM:SS'")
+        help="Seeding time with format 'yyyy-mm-ddTHH:MM:SS'")
     ap.add_argument('-u', '--uncertainty',
         help="Time uncertainty [h] before and after the selected time")
     ap.add_argument('-d', '--duration',
         help="Tracking time span [h]")
     ap.add_argument('-m', '--mode',     
         help="Tracking mode: either -1 (backward in time) or +1 (forward in time)")
-     
+
     # Parse arguments from the command line
     argv = vars(ap.parse_args())
     
@@ -130,7 +130,7 @@ def main():
          if val: options[key] = val
     
     ''' Get starting and end dates for seeding as datetime objects '''
-    time = datetime.strptime(options['time'], '%Y-%m-%d %H:%M:%S')
+    time = datetime.strptime(options['time'], '%Y-%m-%dT%H:%M:%S')
     uncertainty = float(options['uncertainty'])
     idate = time - timedelta(hours=uncertainty)
     edate = time + timedelta(hours=uncertainty)
@@ -268,7 +268,7 @@ def main():
         dt = 60 
         
         ''' Read from Galway Bay '''
-        ocn = 'http://milas.marine.ie/thredds/dodsC/IMI_ROMS_HYDRO/GALWAY_BAY_NATIVE_70M_8L_1H/COMBINED_AGGREGATION'
+        ocn = 'http://milas.marine.ie/thredds/dodsC/IMI_ROMS_HYDRO/GALWAY_BAY_NATIVE_70M_8L_1H/AGGREGATE'
         with Dataset(ocn, 'r') as nc:
             # Read longitude
             x = nc.variables['lon_rho'][:]

@@ -89,11 +89,10 @@ done
 
 INITIAL_DIR="$(pwd)"
 
-#cd /usr/src/app
+cd /usr/src/app
 
 #pip install --user -r required.txt
-
-echo "python SM-R1.py $ARGS"
-echo "python bulletin_script.py $BULL"
+python SM-R1.py $ARGS
+#python bulletin_script.py $BULL
 
 #cp /usr/src/app/OUTPUT/BULLETIN/bulletin.png $INITIAL_DIR
