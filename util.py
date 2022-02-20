@@ -60,6 +60,9 @@ def osm_image(x, y, data=None, style='satellite', notnorm=False):
     # Set grid lines
     gl = ax.gridlines(draw_labels=True, crs=data_crs,
                         color='k',lw=0.5)
+    
+    x, y = np.meshgrid(x, y)
+    
     if data is not None:    
         ax.pcolor(x, y, data, transform=ccrs.PlateCarree(), 
             cmap='YlOrRd', shading='flat')    
