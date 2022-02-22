@@ -64,7 +64,7 @@ def osm_image(x, y, data=None, style='satellite', notnorm=False):
     x, y = np.meshgrid(x, y)
     
     if data is not None:    
-        ax.pcolor(x, y, data, transform=ccrs.PlateCarree(), 
+        ax.pcolor(x, y, data[0:-1, 0:-1], transform=ccrs.PlateCarree(), 
             cmap='YlOrRd', shading='flat')    
         # Set colorbar    
         m = plt.cm.ScalarMappable(cmap='YlOrRd')
