@@ -36,6 +36,7 @@ COPY ["landmask.*", "./"]
 COPY ["*.png", "./"]
 COPY ["*.ttf", "./"]
 COPY ["required.txt", "./"]
+COPY ["area.txt", "./"]
 COPY ["bulletin_script.py", "./"]
 
 RUN chmod 755 /usr/src/app/run.sh
