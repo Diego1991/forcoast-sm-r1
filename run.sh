@@ -86,13 +86,11 @@ while getopts ":hd:f:l:m:p:r:s:t:u:x:y:" option; do
      esac
 done
 
-
 INITIAL_DIR="$(pwd)"
 
 cd /usr/src/app
 
-#pip install --user -r required.txt
 python SM-R1.py $ARGS
-#python bulletin_script.py $BULL
+python bulletin_script.py $BULL
 
-#cp /usr/src/app/OUTPUT/BULLETIN/bulletin.png $INITIAL_DIR
+cp /usr/src/app/OUTPUT/BULLETIN/bulletin.png $INITIAL_DIR
