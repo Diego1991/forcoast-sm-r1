@@ -83,7 +83,7 @@ img_initial_heatmap_height_percent = (img_initial_heatmap_new_Height / float(img
 img_initial_heatmap_new_Width = int((float(img_initial_heatmap.size[0]) * float(img_initial_heatmap_height_percent)))
 img_initial_heatmap_new = img_initial_heatmap.resize((int(img_initial_heatmap_new_Width), int(img_initial_heatmap_new_Height)), PIL.Image.NEAREST)
 
-img_final_countmap_new_Width = img_initial_heatmap_new_Width
+img_final_countmap_new_Width = .9*img_initial_heatmap_new_Width
 
 img_final_countmap_width_percent = (img_final_countmap_new_Width / float(img_final_countmap.size[0]))
 img_final_countmap_new_Height = int((float(img_final_countmap.size[1]) * float(img_final_countmap_width_percent)))
@@ -130,10 +130,10 @@ draw.text((img_final_heatmap_new_Width + img_initial_heatmap_new_Width - 670, im
 draw.text((img_final_heatmap_new_Width + img_initial_heatmap_new_Width - 670, img_logo_new_Height / 1.5), ('Your coordinates x = ' + x + '°; ' + 'y = ' + y + '°'), font=font_1,fill=(0,0,0,255))
 draw.text((img_final_heatmap_new_Width + img_initial_heatmap_new_Width - 670, img_logo_new_Height / 1.15), ('Simulation length: ' + str(round(durationDays,2)) + ' days'), font=font_1,fill=(0,0,0,255))
 
-draw.text((830, 560), ('FINAL PROBABILITY MAP'), font=font_4,fill=(0,0,0,255))
-draw.text((2690, 380), ('INITIAL SITUATION'), font=font_5,fill=(0,0,0,255))
-draw.text((2585, 1062), ('FINAL PARTICLES LOCATION'), font=font_5,fill=(0,0,0,255))
-draw.text((2643, 1838), ('EXPOSURE OVER TIME'), font=font_5,fill=(0,0,0,255))
+#draw.text((830, 560), ('FINAL PROBABILITY MAP'), font=font_4,fill=(0,0,0,255))
+#draw.text((2690, 380), ('INITIAL SITUATION'), font=font_5,fill=(0,0,0,255))
+#draw.text((2585, 1062), ('FINAL PARTICLES LOCATION'), font=font_5,fill=(0,0,0,255))
+#draw.text((2643, 1838), ('EXPOSURE OVER TIME'), font=font_5,fill=(0,0,0,255))
 
 newImg.save("./OUTPUT/BULLETIN/bulletin.png", quality = 95)
       
