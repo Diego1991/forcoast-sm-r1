@@ -13,6 +13,10 @@ RUN conda config --add channels conda-forge
 RUN conda config --add channels opendrift
 
 # Install opendrift environment into base conda environment
+# Copy following from opendrift repo:
+# - opendrift folder
+# - environment.yml
+# - setup.py
 COPY environment.yml .
 RUN /opt/conda/bin/conda env update -n base -f environment.yml
 
@@ -29,6 +33,7 @@ RUN pip install --user -r required.txt
 # Add Service Module files
 WORKDIR /usr/src/app
 COPY ["SM-R1.py", "./"]
+COPY ["send_bulletin.py", "./"]
 COPY ["run.sh", "./"]
 COPY ["R1.yaml", "./"]
 COPY ["Pilot-*-seafloor-depth.nc", "./"]
