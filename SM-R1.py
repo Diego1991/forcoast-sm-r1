@@ -268,7 +268,7 @@ def main():
         dt = 60 
         
         ''' Read from Galway Bay '''
-        ocn = 'http://milas.marine.ie/thredds/dodsC/IMI_ROMS_HYDRO/GALWAY_BAY_NATIVE_70M_8L_1H/AGGREGATE'
+        ocn = 'http://milas.marine.ie/thredds/dodsC/IMI_ROMS_HYDRO/GALWAY_BAY_NATIVE_70M_8L_1H/COMBINED_AGGREGATION'
         with Dataset(ocn, 'r') as nc:
             # Read longitude
             x = nc.variables['lon_rho'][:]
