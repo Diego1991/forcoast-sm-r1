@@ -1,6 +1,7 @@
 import argparse
 import cartopy.crs as ccrs
 from datetime import date, datetime, timedelta
+from imageio import imread, mimsave
 from math import isnan
 import matplotlib
 from matplotlib.path import Path
@@ -59,10 +60,12 @@ def random_points_within(poly, num_points):
 
     return points         
 
-def fixdate(date, times):
+def fixdate(date, times, tipo):
     if date > max(times):
+        print(tipo + ' seeding time is after the latest available time step. Setting it equal to the latest available time step {}'.format(max(times)))
         date = max(times)
     elif date < min(times):
+        print(tipo + ' seeding time is before the earliest available time step. Setting it equal to the earliest available time step {}'.format(min(times)))
         date = min(times)
     return date
  
@@ -381,7 +384,7 @@ def main():
         raise ValueError('Service Module R1 not implemented for this Pilot yet')    
           
     ''' Seed elements '''
-    idate, edate = fixdate(idate, times), fixdate(edate, times)    
+    idate, edate = fixdate(idate, times, 'Start'), fixdate(edate, times, 'End')    
     if options['seed'] == 'point': # point seeding
         lon, lat = float(options['lon']), float(options['lat'])
         # Check user-selected coordinates are within model boundaries
@@ -449,9 +452,22 @@ def main():
         LAT = nc.variables['lat'][:]        
         TIME = nc.variables['time'][:]
     
-    print(' ')
+    ''' NEW SECTION TO ZOOM IN THE DRIFTING AREA '''
+    # Define map boundaries based on trajectories bounding box
+    minimum_longitude = LON.min() - 0.025
+    maximum_longitude = LON.max() + 0.025
+    minimum_latitude = LAT.min()  - 0.025
+    maximum_latitude = LAT.max()  + 0.025
+    
+    # Create grid within the new boundaries
+    x_grid = np.linspace(minimum_longitude, maximum_longitude, num=100)
+    y_grid = np.linspace(minimum_latitude, maximum_latitude, num=100)
+
+    ''' END OF NEW SECTION TO ZOOM IN THE DRIFTING AREA ''' 
+
     ''' Graphical output: floats '''  
     fig, ax = util.osm_image(x_grid, y_grid)  
+    images = []
     for i, t in enumerate(TIME):        
         lon_t, lat_t = LON[:, i], LAT[:, i]
         floats = ax.plot(lon_t, lat_t, 'ko', mfc='red', ms=6,
@@ -459,14 +475,17 @@ def main():
         fecha = datetime.fromtimestamp(t).strftime('%d-%b-%Y %H:%M')
         ax.set_title(fecha)
         print('   Saving floats figure for time ' + fecha)
-        plt.savefig(f'OUTPUT/FLOATS/F{fecha}.png'.replace('-',''). \
-            replace(':','').replace(' ',''), dpi=300, bbox_inches='tight')
+        imagename = f'OUTPUT/FLOATS/F{fecha}.png'.replace('-', '').replace(':', '').replace(' ', '')
+        plt.savefig(imagename, dpi=300, bbox_inches='tight')
+        images.append(imread(imagename))
         line = floats.pop(0)
         line.remove()
-       
+    mimsave('OUTPUT/FLOATS/F.gif', images, duration=.5)
+
     print(' ')
     ''' Graphical output: density maps '''
     HEAT = np.zeros((len(TIME), len(y_grid), len(x_grid)))
+    images = []
     for i, t in enumerate(TIME):        
         # Get longitude and latitude of floats for the i-th time step
         lon_t, lat_t = LON[:, i], LAT[:, i]
@@ -488,9 +507,11 @@ def main():
         ax.set_title(fecha)
         # Save and close figure
         print('   Saving heatmap figure for time ' + fecha)
-        plt.savefig(f'OUTPUT/HEAT/H{fecha}.png'.replace('-',''). \
-            replace(':','').replace(' ',''), dpi=300, bbox_inches='tight')
+        imagename = f'OUTPUT/HEAT/H{fecha}.png'.replace('-', '').replace(':', '').replace(' ', '')
+        plt.savefig(imagename, dpi=300, bbox_inches='tight')
+        images.append(imread(imagename))
         plt.close(fig)
+    mimsave('OUTPUT/HEAT/H.gif', images, duration=.5)
         
     print(' ')
     ''' Calculate LET (Local Exposure Time; Du et al., 2020) '''
@@ -506,9 +527,25 @@ def main():
                 Index_x, Index_y = index_x, index_y
                 cnt[Index_y, Index_x] += 1
             acm[Index_y, Index_x] += 1
-    LET = np.divide(acm, cnt)    
-    fig, ax = util.osm_image(x_grid, y_grid, data=LET, notnorm=True)
-    ax.set_title('Local Exposure Time [h]')
+    LET = np.divide(acm, cnt)  
+    # Highlight only areas where LET is above 75% of maximum LET
+    maxlet = np.nanmax(LET)
+    # Get 75% of maximum LET
+    minlet = .75 * maxlet
+    # Find areas where LET is above 75% of maximum LET
+    where = LET >= minlet
+    # Create new figure
+    fig, ax = util.osm_image(x_grid, y_grid)
+    # Create grid
+    [X_grid, Y_grid] = np.meshgrid(x_grid, y_grid)
+    # Transpose to match LET array dimensions
+    X_grid, Y_grid = X_grid.T, Y_grid.T    
+    # Susset grid only where LET is above 75% of maximum LET
+    xlet, ylet = X_grid[where], Y_grid[where]
+    # Plot
+    ax.plot(xlet, ylet, 'ko', mfc='red', ms=12, 
+            transform=ccrs.PlateCarree())
+    ax.set_title(f'Areas where Local Exposure Time longer than {minlet} hours')
     print('   Saving figure for Local Exposure Time')
     plt.savefig('OUTPUT/HEAT/LET.png', dpi=300, bbox_inches='tight')
     plt.close(fig)

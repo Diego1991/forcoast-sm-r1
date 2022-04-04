@@ -34,7 +34,7 @@ RUN pip install --user -r required.txt
 WORKDIR /usr/src/app
 COPY ["SM-R1.py", "./"]
 COPY ["send_bulletin.py", "./"]
-COPY ["run.sh", "./"]
+COPY ["run_diego.sh", "./"]
 COPY ["R1.yaml", "./"]
 COPY ["Pilot-*-seafloor-depth.nc", "./"]
 COPY ["landmask.*", "./"]
@@ -44,11 +44,11 @@ COPY ["required.txt", "./"]
 COPY ["area.txt", "./"]
 COPY ["bulletin_script.py", "./"]
 
-RUN chmod 755 /usr/src/app/run.sh
+RUN chmod 755 /usr/src/app/run_diego.sh
 
 # Replace OpenDrift's code with Service Module's code
 COPY ["basemodel.py", "/code/opendrift/models/"]
 COPY ["reader_netCDF_CF_generic.py", "/code/opendrift/readers/"]
 
-ENTRYPOINT ["/usr/src/app/run.sh"]
+ENTRYPOINT ["/usr/src/app/run_diego.sh"]
 # ENTRYPOINT ["bash", "-c"]
