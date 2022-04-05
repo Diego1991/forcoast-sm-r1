@@ -202,7 +202,7 @@ def main():
             # Read time
             times = nc.variables['time'][:]  
         # Time offset                                          
-        offset = datetime(2021, 1, 1)
+        offset = datetime(date.today().year, 1, 1)
         # Create time list
         times = [offset + timedelta(seconds=i) for i in times]                         
         # Generate reader for physics         
