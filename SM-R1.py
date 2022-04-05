@@ -359,7 +359,7 @@ def main():
         url = 'https://dsecho.inogs.it/thredds/dodsC/pilot8/model_OGS/RFVL/'
         ocn = [url + dates + '/'+ i for i in ocn]  
         with xr.open_mfdataset(ocn, chunks={'time': 1}, concat_dim='time',
-            combine='by_coords', compat='override', decode_times=False,                                   
+            combine='nested', compat='override', decode_times=False,                                   
             data_vars='minimal', coords='minimal') as nc:
             # Read longitude
             x_grid = nc.variables['longitude'][:].data
