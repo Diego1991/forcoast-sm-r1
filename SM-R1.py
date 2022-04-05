@@ -468,49 +468,90 @@ def main():
     ''' Graphical output: floats '''  
     fig, ax = util.osm_image(x_grid, y_grid)  
     images = []
-    for i, t in enumerate(TIME):        
-        lon_t, lat_t = LON[:, i], LAT[:, i]
-        floats = ax.plot(lon_t, lat_t, 'ko', mfc='red', ms=6,
-            transform=ccrs.PlateCarree())
-        fecha = datetime.fromtimestamp(t).strftime('%d-%b-%Y %H:%M')
-        ax.set_title(fecha)
-        print('   Saving floats figure for time ' + fecha)
-        imagename = f'OUTPUT/FLOATS/F{fecha}.png'.replace('-', '').replace(':', '').replace(' ', '')
-        plt.savefig(imagename, dpi=300, bbox_inches='tight')
-        images.append(imread(imagename))
-        line = floats.pop(0)
-        line.remove()
+    if mode < 0:
+        for i, t in reversed(list(enumerate(TIME))):        
+            lon_t, lat_t = LON[:, i], LAT[:, i]
+            floats = ax.plot(lon_t, lat_t, 'ko', mfc='red', ms=6,
+                transform=ccrs.PlateCarree())
+            fecha = datetime.fromtimestamp(t).strftime('%d-%b-%Y %H:%M')
+            ax.set_title(fecha)
+            print('   Saving floats figure for time ' + fecha)
+            imagename = f'OUTPUT/FLOATS/F{fecha}.png'.replace('-', '').replace(':', '').replace(' ', '')
+            plt.savefig(imagename, dpi=300, bbox_inches='tight')
+            images.append(imread(imagename))
+            line = floats.pop(0)
+            line.remove()
+    else:
+        for i, t in enumerate(TIME):        
+            lon_t, lat_t = LON[:, i], LAT[:, i]
+            floats = ax.plot(lon_t, lat_t, 'ko', mfc='red', ms=6,
+                transform=ccrs.PlateCarree())
+            fecha = datetime.fromtimestamp(t).strftime('%d-%b-%Y %H:%M')
+            ax.set_title(fecha)
+            print('   Saving floats figure for time ' + fecha)
+            imagename = f'OUTPUT/FLOATS/F{fecha}.png'.replace('-', '').replace(':', '').replace(' ', '')
+            plt.savefig(imagename, dpi=300, bbox_inches='tight')
+            images.append(imread(imagename))
+            line = floats.pop(0)
+            line.remove()
     mimsave('OUTPUT/FLOATS/F.gif', images, duration=.5)
 
     print(' ')
     ''' Graphical output: density maps '''
     HEAT = np.zeros((len(TIME), len(y_grid), len(x_grid)))
     images = []
-    for i, t in enumerate(TIME):        
-        # Get longitude and latitude of floats for the i-th time step
-        lon_t, lat_t = LON[:, i], LAT[:, i]
-        for x, y in zip(lon_t, lat_t):
-            index_x = np.argmax(x < x_grid) - 1
-            index_y = np.argmax(y < y_grid) - 1
-            HEAT[i, index_y, index_x] += 1  
-        # Processing i-th heat map
-        heat = HEAT[i, :, :]
-        # Mask where there are no floats to keep it transparent and 
-        # show the underlying background satellite image beneath
-        heat = np.ma.masked_where(heat == 0, heat)
-        try:
-            fig, ax = util.osm_image(x_grid, y_grid, data=heat)           
-        except TopologicalError:
-            continue
-        # Add date and time as title
-        fecha = datetime.fromtimestamp(t).strftime('%d-%b-%Y %H:%M')
-        ax.set_title(fecha)
-        # Save and close figure
-        print('   Saving heatmap figure for time ' + fecha)
-        imagename = f'OUTPUT/HEAT/H{fecha}.png'.replace('-', '').replace(':', '').replace(' ', '')
-        plt.savefig(imagename, dpi=300, bbox_inches='tight')
-        images.append(imread(imagename))
-        plt.close(fig)
+    if mode < 0:
+        for i, t in reversed(list(enumerate(TIME))):        
+            # Get longitude and latitude of floats for the i-th time step
+            lon_t, lat_t = LON[:, i], LAT[:, i]
+            for x, y in zip(lon_t, lat_t):
+                index_x = np.argmax(x < x_grid) - 1
+                index_y = np.argmax(y < y_grid) - 1
+                HEAT[i, index_y, index_x] += 1  
+            # Processing i-th heat map
+            heat = HEAT[i, :, :]
+            # Mask where there are no floats to keep it transparent and 
+            # show the underlying background satellite image beneath
+            heat = np.ma.masked_where(heat == 0, heat)
+            try:
+                fig, ax = util.osm_image(x_grid, y_grid, data=heat)           
+            except TopologicalError:
+                continue
+            # Add date and time as title
+            fecha = datetime.fromtimestamp(t).strftime('%d-%b-%Y %H:%M')
+            ax.set_title(fecha)
+            # Save and close figure
+            print('   Saving heatmap figure for time ' + fecha)
+            imagename = f'OUTPUT/HEAT/H{fecha}.png'.replace('-', '').replace(':', '').replace(' ', '')
+            plt.savefig(imagename, dpi=300, bbox_inches='tight')
+            images.append(imread(imagename))
+            plt.close(fig)
+    else:
+        for i, t in enumerate(TIME):        
+            # Get longitude and latitude of floats for the i-th time step
+            lon_t, lat_t = LON[:, i], LAT[:, i]
+            for x, y in zip(lon_t, lat_t):
+                index_x = np.argmax(x < x_grid) - 1
+                index_y = np.argmax(y < y_grid) - 1
+                HEAT[i, index_y, index_x] += 1  
+            # Processing i-th heat map
+            heat = HEAT[i, :, :]
+            # Mask where there are no floats to keep it transparent and 
+            # show the underlying background satellite image beneath
+            heat = np.ma.masked_where(heat == 0, heat)
+            try:
+                fig, ax = util.osm_image(x_grid, y_grid, data=heat)           
+            except TopologicalError:
+                continue
+            # Add date and time as title
+            fecha = datetime.fromtimestamp(t).strftime('%d-%b-%Y %H:%M')
+            ax.set_title(fecha)
+            # Save and close figure
+            print('   Saving heatmap figure for time ' + fecha)
+            imagename = f'OUTPUT/HEAT/H{fecha}.png'.replace('-', '').replace(':', '').replace(' ', '')
+            plt.savefig(imagename, dpi=300, bbox_inches='tight')
+            images.append(imread(imagename))
+            plt.close(fig)
     mimsave('OUTPUT/HEAT/H.gif', images, duration=.5)
         
     print(' ')
