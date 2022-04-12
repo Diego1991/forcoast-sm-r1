@@ -454,10 +454,10 @@ def main():
     
     ''' NEW SECTION TO ZOOM IN THE DRIFTING AREA '''
     # Define map boundaries based on trajectories bounding box
-    minimum_longitude = LON.min() - 0.025
-    maximum_longitude = LON.max() + 0.025
-    minimum_latitude = LAT.min()  - 0.025
-    maximum_latitude = LAT.max()  + 0.025
+    minimum_longitude = max(LON.min() - 0.025, x_grid.min())
+    maximum_longitude = min(LON.max() + 0.025, x_grid.max())
+    minimum_latitude = max(LAT.min()  - 0.025, y_grid.min())
+    maximum_latitude = min(LAT.max()  + 0.025, y_grid.max())
     
     # Create grid within the new boundaries
     x_grid = np.linspace(minimum_longitude, maximum_longitude, num=100)
