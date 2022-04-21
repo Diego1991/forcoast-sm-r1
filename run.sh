@@ -26,5 +26,10 @@ echo "python bulletin_script.py -t "$2T00:00:00" -x $4 -y $5 -p $pilot_id -d $3"
 python bulletin_script.py -x $4 -y $5 -p $pilot_id -d $3
 
 python send_bulletin.py -T $6 -C $7 -B /usr/src/app/OUTPUT/BULLETIN/bulletin.png -M file
+convert /usr/src/app/OUTPUT/HEAT/H.gif -layers Coalesce -resize 1020x659 -layers Optimize /usr/src/app/OUTPUT/HEAT/H_resize.gif
+convert /usr/src/app/OUTPUT/FLOATS/F.gif -layers Coalesce -resize 1020x659 -layers Optimize /usr/src/app/OUTPUT/FLOATS/F_resize.gif
+
+python send_bulletin.py -T $6 -C $7 -B /usr/src/app/OUTPUT/HEAT/H_resize.gif -M document
+python send_bulletin.py -T $6 -C $7 -B /usr/src/app/OUTPUT/FLOATS/F_resize.gif -M document
 
 cp /usr/src/app/OUTPUT/BULLETIN/bulletin.png $INITIAL_DIR
