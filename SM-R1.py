@@ -192,8 +192,9 @@ def main():
             except ConnectionResetError:
                 pass    
         with Dataset(ocn, 'a') as nc:
+            YYYY = date.today().year
             timenc = nc.variables['time']
-            timenc.units = 'seconds since 2021-01-01 00:00:00'
+            timenc.units = f'seconds since {YYYY}-01-01 00:00:00'
         with Dataset(ocn, 'r') as nc:
             # Read longitude
             x = nc.variables['lon_rho'][:]
