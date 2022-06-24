@@ -587,7 +587,7 @@ def main():
     # Plot
     ax.plot(xlet, ylet, 'ko', mfc='red', ms=12, 
             transform=ccrs.PlateCarree())
-    ax.set_title(f'Areas where Local Exposure Time longer than {minlet} hours')
+    ax.set_title(f'Areas where Local Exposure Time longer than %.2f hours' % minlet)
     print('   Saving figure for Local Exposure Time')
     plt.savefig('OUTPUT/HEAT/LET.png', dpi=300, bbox_inches='tight')
     plt.close(fig)
