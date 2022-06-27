@@ -49,4 +49,4 @@ duration: 8
 # contamination, or forward (+1) to determine where the contaminants
 # move from the source.
 
-mode: 1
+mode: -1
