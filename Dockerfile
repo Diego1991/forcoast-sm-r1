@@ -2,6 +2,8 @@
 
 FROM continuumio/miniconda3
 
+RUN apt-get update && apt-get -y install imagemagick
+
 ENV DEBIAN_FRONTEND noninteractive
 ENV PATH /code/opendrift/opendrift/scripts:$PATH
 
@@ -18,6 +20,7 @@ RUN conda config --add channels opendrift
 # - environment.yml
 # - setup.py
 COPY environment.yml .
+
 RUN /opt/conda/bin/conda env update -n base -f environment.yml
 
 # Install opendrift
@@ -35,6 +38,7 @@ WORKDIR /usr/src/app
 COPY ["SM-R1.py", "./"]
 COPY ["send_bulletin.py", "./"]
 COPY ["run_diego.sh", "./"]
+COPY ["run.sh", "./"]
 COPY ["R1.yaml", "./"]
 COPY ["Pilot-*-seafloor-depth.nc", "./"]
 COPY ["landmask.*", "./"]
@@ -43,12 +47,14 @@ COPY ["*.ttf", "./"]
 COPY ["required.txt", "./"]
 COPY ["area.txt", "./"]
 COPY ["bulletin_script.py", "./"]
+COPY ["policy.xml", "/etc/ImageMagick-6/policy.xml"]
 
+RUN chmod 755 /usr/src/app/run.sh
 RUN chmod 755 /usr/src/app/run_diego.sh
 
 # Replace OpenDrift's code with Service Module's code
 COPY ["basemodel.py", "/code/opendrift/models/"]
 COPY ["reader_netCDF_CF_generic.py", "/code/opendrift/readers/"]
 
-ENTRYPOINT ["/usr/src/app/run_diego.sh"]
+ENTRYPOINT ["/usr/src/app/run.sh"]
 # ENTRYPOINT ["bash", "-c"]
