@@ -11,6 +11,7 @@ import numpy as np
 from opendrift.models.oceandrift import OceanDrift
 from opendrift.readers import reader_netCDF_CF_generic, reader_shape
 import os
+import pytz
 from random import random, uniform
 import re
 import requests
@@ -22,6 +23,10 @@ import xarray as xr
 import yaml
 
 font = {'size' : 18}; matplotlib.rc('font', **font)
+
+def to_utc(time, local):
+    local_dt = local.localize(time, is_dst=None)
+    return local_dt.astimezone(pytz.utc)  
 
 def process_bedfile(file):
     ''' Get farming polygons from user's input file '''
@@ -168,10 +173,11 @@ def main():
         
     ''' Pilot-specific code '''
     if int(options['pilot']) == 1: # PORTUGAL
+        local = pytz.timezone('Europe/Lisbon')
         raise ValueError('Service Module R1 not implemented for this Pilot yet')           
         
     elif int(options['pilot']) == 2: # SPAIN
-        
+        local = pytz.timezone('Europe/Madrid')
         Z = 0
                 
         # Opendrift time step [s] - depends on model resolution
@@ -215,9 +221,11 @@ def main():
         x_grid, y_grid = x[0, :], y[:, 0]
         
     elif int(options['pilot']) == 3: # BULGARIA
+        local = pytz.timezone('Europe/Sofia')
         raise ValueError('Service Module R1 not implemented for this Pilot yet')
         
     elif int(options['pilot']) == 4: # BELGIUM
+        local = pytz.timezone('Europe/Brussels')
     
         from erddapy.url_handling import urlopen                
         from pathlib import Path
@@ -267,6 +275,7 @@ def main():
         times = [offset + timedelta(seconds=i) for i in times]
            
     elif int(options['pilot']) == 5: # IRELAND   
+        local = pytz.timezone('Europe/Dublin')
         
         # Opendrift time step [s] - depends on model resolution
         dt = 60 
@@ -293,6 +302,7 @@ def main():
         x_grid, y_grid = x[0, :], y[:, 0]
         
     elif int(options['pilot']) == 6: # DENMARK
+        local = pytz.timezone('Europe/Copenhagen')
     
         # Opendrift time step [s]
         dt = 60 
@@ -334,9 +344,11 @@ def main():
         Opendrift.add_reader([mask, ocean])
        
     elif int(options['pilot']) == 7: # ROMANIA
+        local = pytz.timezone('Europe/Bucharest')
         raise ValueError('Service Module R1 not implemented for this Pilot yet')   
         
     elif int(options['pilot']) == 8: # ITALY
+        local = pytz.timezone('Europe/Rome')
     
         # Opendrift time step [s] - depends on model resolution
         dt = 600     
@@ -385,6 +397,7 @@ def main():
         raise ValueError('Service Module R1 not implemented for this Pilot yet')    
           
     ''' Seed elements '''
+    idate, edate = to_utc(idate), to_utc(edate)
     idate, edate = fixdate(idate, times, 'Start'), fixdate(edate, times, 'End')    
     if options['seed'] == 'point': # point seeding
         lon, lat = float(options['lon']), float(options['lat'])
