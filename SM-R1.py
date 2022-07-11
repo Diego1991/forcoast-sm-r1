@@ -397,7 +397,7 @@ def main():
         raise ValueError('Service Module R1 not implemented for this Pilot yet')    
           
     ''' Seed elements '''
-    idate, edate = to_utc(idate), to_utc(edate)
+    idate, edate = to_utc(idate, local), to_utc(edate, local)
     idate, edate = fixdate(idate, times, 'Start'), fixdate(edate, times, 'End')    
     if options['seed'] == 'point': # point seeding
         lon, lat = float(options['lon']), float(options['lat'])
