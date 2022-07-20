@@ -28,7 +28,7 @@ file: ''
 
 lon: 2.5
 lat: 51.5
-radius: 1000
+radius: 100
 
 # SEEDING LEVEL. Seed either at the surface or at the bottom. 
 
