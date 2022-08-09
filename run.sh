@@ -1,5 +1,5 @@
 #!/bin/bash
-# docker run forcoast-sm-r1 southern_north_sea "2021-11-29" 8 2.5 52
+# docker run forcoast-sm-r1 southern_north_sea "2021-11-29T00:00:00" 8 2.5 52
 
 INITIAL_DIR="$(pwd)"
 
@@ -19,10 +19,10 @@ elif [ "$1" == "northern_adriatic_sea_pilot" ]; then
 pilot_id=8 
 fi
 
-echo "python SM-R1.py -t "$2T00:00:00" -x $4 -y $5 -p $pilot_id -d $3"
-python SM-R1.py -t "$2T00:00:00" -x $4 -y $5 -p $pilot_id -d $3
+echo "python SM-R1.py -t $2 -x $4 -y $5 -p $pilot_id -d $3"
+python SM-R1.py -t $2 -x $4 -y $5 -p $pilot_id -d $3
 
-echo "python bulletin_script.py -t "$2T00:00:00" -x $4 -y $5 -p $pilot_id -d $3"
+echo "python bulletin_script.py -t $2 -x $4 -y $5 -p $pilot_id -d $3"
 python bulletin_script.py -x $4 -y $5 -p $pilot_id -d $3
 
 python send_bulletin.py -T $6 -C $7 -B /usr/src/app/OUTPUT/BULLETIN/bulletin.png -M file
