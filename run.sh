@@ -5,7 +5,7 @@ INITIAL_DIR="$(pwd)"
 
 cd /usr/src/app
 
-pip install --user -r required.txt
+#pip install --user -r required.txt
 
 if [[ "$1" == "galway" ]]; then 
 pilot_id=5
@@ -19,17 +19,17 @@ elif [ "$1" == "northern_adriatic_sea_pilot" ]; then
 pilot_id=8 
 fi
 
-echo "python SM-R1.py -t "$2T00:00:00" -x $4 -y $5 -p $pilot_id -d $3"
-python SM-R1.py -t "$2T00:00:00" -x $4 -y $5 -p $pilot_id -d $3
+echo "python SM-R1.py -t $2 -x $4 -y $5 -p $pilot_id -d $3"
+python SM-R1.py -t $2 -x $4 -y $5 -p $pilot_id -d $3
 
-echo "python bulletin_script.py -t "$2T00:00:00" -x $4 -y $5 -p $pilot_id -d $3"
+echo "python bulletin_script.py -t $2 -x $4 -y $5 -p $pilot_id -d $3"
 python bulletin_script.py -x $4 -y $5 -p $pilot_id -d $3
 
-python send_bulletin.py -T $6 -C $7 -B /usr/src/app/OUTPUT/BULLETIN/bulletin.png -M file
-convert /usr/src/app/OUTPUT/HEAT/H.gif -layers Coalesce -resize 1020x659 -layers Optimize /usr/src/app/OUTPUT/HEAT/H_resize.gif
-convert /usr/src/app/OUTPUT/FLOATS/F.gif -layers Coalesce -resize 1020x659 -layers Optimize /usr/src/app/OUTPUT/FLOATS/F_resize.gif
+python send_bulletin.py -T $6 -C $7 -B /usr/src/app/OUTPUT/BULLETIN/bulletin.mp4 -M video
+#convert /usr/src/app/OUTPUT/HEAT/H.gif -layers Coalesce -resize 1020x659 -layers Optimize /usr/src/app/OUTPUT/HEAT/H_resize.gif
+#convert /usr/src/app/OUTPUT/FLOATS/F.gif -layers Coalesce -resize 1020x659 -layers Optimize /usr/src/app/OUTPUT/FLOATS/F_resize.gif
 
-python send_bulletin.py -T $6 -C $7 -B /usr/src/app/OUTPUT/HEAT/H_resize.gif -M document
-python send_bulletin.py -T $6 -C $7 -B /usr/src/app/OUTPUT/FLOATS/F_resize.gif -M document
+#python send_bulletin.py -T $6 -C $7 -B /usr/src/app/OUTPUT/HEAT/H_resize.gif -M document
+#python send_bulletin.py -T $6 -C $7 -B /usr/src/app/OUTPUT/FLOATS/F_resize.gif -M document
 
-cp /usr/src/app/OUTPUT/BULLETIN/bulletin.png $INITIAL_DIR
+cp /usr/src/app/OUTPUT/BULLETIN/bulletin.mp4 $INITIAL_DIR
