@@ -93,4 +93,4 @@ cd /usr/src/app
 python SM-R1.py $ARGS
 python bulletin_script.py $BULL
 
-cp /usr/src/app/OUTPUT/BULLETIN/bulletin.png $INITIAL_DIR
+cp /usr/src/app/OUTPUT/BULLETIN/bulletin.mp4 $INITIAL_DIR

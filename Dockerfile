@@ -31,6 +31,7 @@ RUN pip install -e .
 RUN /bin/bash -c "echo -e \"import opendrift\" | python"
 
 # Install wget and erddapy
+RUN apt-get update && apt-get install libgl1 -y 
 RUN pip install --user -r required.txt
 
 # Add Service Module files

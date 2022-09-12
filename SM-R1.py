@@ -397,7 +397,7 @@ def main():
         raise ValueError('Service Module R1 not implemented for this Pilot yet')    
           
     ''' Seed elements '''
-    idate, edate = to_utc(idate, local), to_utc(edate, local)
+    #idate, edate = to_utc(idate, local), to_utc(edate, local)
     idate, edate = fixdate(idate, times, 'Start'), fixdate(edate, times, 'End')    
     if options['seed'] == 'point': # point seeding
         lon, lat = float(options['lon']), float(options['lat'])
@@ -487,11 +487,14 @@ def main():
             lon_t, lat_t = LON[:, i], LAT[:, i]
             floats = ax.plot(lon_t, lat_t, 'ko', mfc='red', ms=6,
                 transform=ccrs.PlateCarree())
+            # Add starting point marker
+            ax.plot(float(options['lon']), float(options['lat']), 'x', color='white', ms=12,
+                transform=ccrs.PlateCarree())
             fecha = datetime.fromtimestamp(t).strftime('%d-%b-%Y %H:%M')
-            ax.set_title(fecha)
+            ax.set_title("Single Particle map:\n{}".format(fecha))
             print('   Saving floats figure for time ' + fecha)
             imagename = f'OUTPUT/FLOATS/F{fecha}.png'.replace('-', '').replace(':', '').replace(' ', '')
-            plt.savefig(imagename, dpi=300, bbox_inches='tight')
+            plt.savefig(imagename, dpi=120, bbox_inches='tight')
             images.append(imread(imagename))
             line = floats.pop(0)
             line.remove()
@@ -500,15 +503,18 @@ def main():
             lon_t, lat_t = LON[:, i], LAT[:, i]
             floats = ax.plot(lon_t, lat_t, 'ko', mfc='red', ms=6,
                 transform=ccrs.PlateCarree())
+            # Add starting point marker
+            ax.plot(float(options['lon']), float(options['lat']), 'x', color='white', ms=12,
+                transform=ccrs.PlateCarree())
             fecha = datetime.fromtimestamp(t).strftime('%d-%b-%Y %H:%M')
-            ax.set_title(fecha)
+            ax.set_title("Single Particle map:\n{}".format(fecha))
             print('   Saving floats figure for time ' + fecha)
             imagename = f'OUTPUT/FLOATS/F{fecha}.png'.replace('-', '').replace(':', '').replace(' ', '')
-            plt.savefig(imagename, dpi=300, bbox_inches='tight')
+            plt.savefig(imagename, dpi=120, bbox_inches='tight')
             images.append(imread(imagename))
             line = floats.pop(0)
             line.remove()
-    mimsave('OUTPUT/FLOATS/F.gif', images, duration=.5)
+    #mimsave('OUTPUT/FLOATS/F.gif', images, duration=.5)
 
     print(' ')
     ''' Graphical output: density maps '''
@@ -531,13 +537,16 @@ def main():
                 fig, ax = util.osm_image(x_grid, y_grid, data=heat)           
             except TopologicalError:
                 continue
+            # Add starting point marker
+            ax.plot(float(options['lon']), float(options['lat']), 'x', color='white', ms=12,
+                transform=ccrs.PlateCarree())
             # Add date and time as title
             fecha = datetime.fromtimestamp(t).strftime('%d-%b-%Y %H:%M')
-            ax.set_title(fecha)
+            ax.set_title("Particle density index:\n{}".format(fecha))
             # Save and close figure
             print('   Saving heatmap figure for time ' + fecha)
             imagename = f'OUTPUT/HEAT/H{fecha}.png'.replace('-', '').replace(':', '').replace(' ', '')
-            plt.savefig(imagename, dpi=300, bbox_inches='tight')
+            plt.savefig(imagename, dpi=120, bbox_inches='tight')
             images.append(imread(imagename))
             plt.close(fig)
     else:
@@ -557,16 +566,19 @@ def main():
                 fig, ax = util.osm_image(x_grid, y_grid, data=heat)           
             except TopologicalError:
                 continue
+            #Add starting point marker
+            ax.plot(float(options['lon']), float(options['lat']), 'x', color='white', ms=12,
+                transform=ccrs.PlateCarree())
             # Add date and time as title
             fecha = datetime.fromtimestamp(t).strftime('%d-%b-%Y %H:%M')
-            ax.set_title(fecha)
+            ax.set_title("Particle density index:\n{}".format(fecha))
             # Save and close figure
             print('   Saving heatmap figure for time ' + fecha)
             imagename = f'OUTPUT/HEAT/H{fecha}.png'.replace('-', '').replace(':', '').replace(' ', '')
-            plt.savefig(imagename, dpi=300, bbox_inches='tight')
+            plt.savefig(imagename, dpi=120, bbox_inches='tight')
             images.append(imread(imagename))
             plt.close(fig)
-    mimsave('OUTPUT/HEAT/H.gif', images, duration=.5)
+    #mimsave('OUTPUT/HEAT/H.gif', images, duration=.5)
         
     print(' ')
     ''' Calculate LET (Local Exposure Time; Du et al., 2020) '''
@@ -600,9 +612,12 @@ def main():
     # Plot
     ax.plot(xlet, ylet, 'ko', mfc='red', ms=12, 
             transform=ccrs.PlateCarree())
-    ax.set_title(f'Areas where Local Exposure Time longer than %.2f hours' % minlet)
+    #Add starting point marker
+    ax.plot(float(options['lon']), float(options['lat']), 'x', color='white', ms=12,
+        transform=ccrs.PlateCarree())
+    ax.set_title(f'Areas where Local Exposure Time \nis longer than %.2f hours' % minlet)
     print('   Saving figure for Local Exposure Time')
-    plt.savefig('OUTPUT/HEAT/LET.png', dpi=300, bbox_inches='tight')
+    plt.savefig('OUTPUT/HEAT/LET.png', dpi=120, bbox_inches='tight')
     plt.close(fig)
                         
     ''' Save heatmaps and LET into NetCDF '''
