@@ -1,3 +1,5 @@
+#(C) Copyright FORCOAST H2020 project under Grant No. 870465. All rights reserved.
+
 # See https://opendrift.github.io for usage
 
 FROM continuumio/miniconda3
@@ -19,7 +21,7 @@ RUN conda config --add channels opendrift
 # - opendrift folder
 # - environment.yml
 # - setup.py
-COPY environment.yml .
+COPY environment.yml /code
 
 RUN /opt/conda/bin/conda env update -n base -f environment.yml
 
@@ -31,8 +33,11 @@ RUN pip install -e .
 RUN /bin/bash -c "echo -e \"import opendrift\" | python"
 
 # Install wget and erddapy
+
+COPY ["required.txt", "/usr/src/app/"]
+
 RUN apt-get update && apt-get install libgl1 -y 
-RUN pip install --user -r required.txt
+RUN pip install -r /usr/src/app/required.txt
 
 # Add Service Module files
 WORKDIR /usr/src/app
@@ -45,7 +50,6 @@ COPY ["Pilot-*-seafloor-depth.nc", "./"]
 COPY ["landmask.*", "./"]
 COPY ["*.png", "./"]
 COPY ["*.ttf", "./"]
-COPY ["required.txt", "./"]
 COPY ["area.txt", "./"]
 COPY ["bulletin_script.py", "./"]
 COPY ["policy.xml", "/etc/ImageMagick-6/policy.xml"]

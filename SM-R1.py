@@ -1,3 +1,5 @@
+#(C) Copyright FORCOAST H2020 project under Grant No. 870465. All rights reserved.
+
 import argparse
 import cartopy.crs as ccrs
 from datetime import date, datetime, timedelta

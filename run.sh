@@ -1,4 +1,7 @@
 #!/bin/bash
+
+#(C) Copyright FORCOAST H2020 project under Grant No. 870465. All rights reserved.
+
 # docker run forcoast-sm-r1 southern_north_sea "2021-11-29" 8 2.5 52
 
 INITIAL_DIR="$(pwd)"
@@ -33,3 +36,4 @@ python send_bulletin.py -T $6 -C $7 -B /usr/src/app/OUTPUT/BULLETIN/bulletin.mp4
 #python send_bulletin.py -T $6 -C $7 -B /usr/src/app/OUTPUT/FLOATS/F_resize.gif -M document
 
 cp /usr/src/app/OUTPUT/BULLETIN/bulletin.mp4 $INITIAL_DIR
+cp /usr/src/app/OUTPUT/BULLETIN/bulletin.webm $INITIAL_DIR
