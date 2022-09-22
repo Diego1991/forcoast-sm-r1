@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#(C) Copyright FORCOAST H2020 project under Grant No. 870465. All rights reserved.
+
 Help()
 {
 echo "Usage: forcoast-sm-r1 [OPTIONS]"

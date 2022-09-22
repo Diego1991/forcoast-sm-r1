@@ -1,3 +1,5 @@
+#(C) Copyright FORCOAST H2020 project under Grant No. 870465. All rights reserved.
+
 import PIL
 from PIL import Image, ImageDraw, ImageFont
 import os
@@ -133,16 +135,34 @@ def singleBulletinFrame(i, heatmap, countmap):
     return bull_width, bull_height
 
 def make_video(frame_folder, bull_width, bull_height):
-    images = [cv2.imread(image) for image in sorted(glob.glob(f"{frame_folder}/*.png"), reverse=True)]
+    images = sorted(glob.glob(f"{frame_folder}/*.png"))
+    for i, image in enumerate(images):
+            ResizeBulletin = Image.new('RGBA', (1920, 1080), (0, 0, 0))
+            Bulletin = Image.open(image)
+            Bulletin_resize, Bulletin_resize_Width, Bulletin_resize_Height = resize_width(Bulletin, bull_width, bull_height, 1920)
+            ResizeBulletin.paste(Bulletin_resize, (0, 540 - (int(Bulletin_resize_Height/2))))
+            if i < 10:
+                ResizeBulletin.save("{}/0{}_resize.png".format(frame_folder, i), quality = 95)
+            else:
+                ResizeBulletin.save("{}/{}_resize.png".format(frame_folder, i), quality = 95)
+            
+    imagesResize = [cv2.imread(imageResize) for imageResize in sorted(glob.glob(f"{frame_folder}/*_resize.png"), reverse=True)]
     if len(images) == 0:
         print("No frames for video")
     else:
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        video = cv2.VideoWriter("./OUTPUT/BULLETIN/bulletin.mp4", fourcc, 0.7, (bull_width, bull_height))
-        print("Video Writer Initiatied")
-        for image in images:
-            video.write(image)
-        print("Video generated")
+        fourccTelegram = cv2.VideoWriter_fourcc(*'mp4v')
+        TelegramVideo = cv2.VideoWriter("./OUTPUT/BULLETIN/bulletin.mp4", fourccTelegram, 0.7, (1920, 1080))
+        print("Telegram Video Writer Initiatied")
+        for imageResize in imagesResize:
+            TelegramVideo.write(imageResize)
+        print("Telegram Video generated")
+
+        fourccWeb = cv2.VideoWriter_fourcc(*'vp80')
+        Webvideo = cv2.VideoWriter("./OUTPUT/BULLETIN/bulletin.webm", fourccWeb, 0.7, (1920, 1080))
+        print("Web Video Writer Initiatied")
+        for imageResize in imagesResize:
+            Webvideo.write(imageResize)
+        print("Web Video generated")
 
 heatmaps = sorted(glob.glob('./OUTPUT/HEAT/H*.png'))
 countmaps = sorted(glob.glob('./OUTPUT/FLOATS/F*.png'))   
