@@ -43,3 +43,5 @@ For this reason, there is a post-processing step in which a concentration
 of pollution is determined by counting the number of numerical floats at
 each grid cell for every time step. This information can be used to 
 display heatmaps of water pollution. 
+
+Licensed under GPL2.0
