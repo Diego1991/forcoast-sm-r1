@@ -1,47 +1,24 @@
-This is "FORCOAST-SM-R1: Retrieve Sources of Contaminants" Repository.
+# ForCoast-SM-R1
 
-This code is entirely written in Python and it is currently implemented
-for Pilots 4 (Belgium), 5 (Ireland) and 8 (Italy). The code is available
-in two different versions: the CLI version and the GUI version.
+### Description
 
-The GUI version is in the GUI folder and there is more information about
-it in the README document inside. The CLI version includes the following 
-files: (a) SM-R1.py is the Python code, which acccepts arguments from 
-the command line; these arguments are all listed in the (b) R1.yaml file.
-Enter "python SM-R1.py -h" for a description of the available arguments.
-In addition, in order to run the code in the Adriatic Sea, a bathymetry
-file (c) Pilot-8-seafloor-depth.nc is also supplied.
+This service uses a backtracking simulation to find the potential source of contaminents. A location is chosen where the contaminents are present. The duration of the backtracking simulation and the start time of the simulation must also be set. A bulletin will be produced highlighting areas with a probability of it being the contaminents source.
 
-The code is based on the OpenDrift (https://opendrift.github.io/) particle-
-tracking model. Contaminants are assumed to be perfect passive tracers. 
-The procedure consists of entering a number of numerical drifters into the
-model domain and track its motion. There are two ways available to the user
-for seeding numerical drifters: either (1) "point" seeding and (2) "area"
-seeding. 
+### How to run
 
-"Point" seeding consists of selecting latitude and longitude coordinates and
-a uniform radius of dispersion around the selected location to add for some
-uncertainty.
+* Copy following from opendrift repo to this repo:
+  * opendrift folder
+  * environment.yml
+  * setup.py
+* Containerize contents in docker
+* Run the command Docker run forcoast/forcoast-sm-r1 &lt;pilot> &lt;datetime> &lt;period> &lt;lon> &lt;lat> &lt;Telegram token> &lt;Telegram chat_id>
+  * Where pilot is either "galway" or "southern_north_sea"
+  * Where datetime is the start date and time
+  * period is the length of the simulation in hours
+  * Lon and lat are for the strat point of the simulation
+  * Telegram bot is used for sendingh the bulletins through messaging services
+* Example of use: Docker run forcoast/forcoast-sm-r1 galway 2022-09-11T00:00:00 8 -8.95 53.20 5267228188:AAGx60FtWgHkScBb3ISFL1dp6Oq_9z9z0rw -1001558581397
 
-"Area" seeding consists of entering farming areas or polygons from a file. 
-Then, numerical drifters are seeded following a random uniform distribution
-inside these areas. Farming files should be plain text files and a very
-simple example is provided at the "farms" folder. 
-
-Other options available to the user are the seeding time, the seeding level
-(either surface or bottom) and whether the model should run forward or 
-backward in time. The backward capability is oriented towards retrieving 
-the origin of the contamination detected in a farm, following the definition
-of this Service Module.
-
-There are currently two outputs from this Service Module, both are NetCDF
-files. First file is the immediate output from the OpenDrift module: a 
-NetCDF file showing the path followed by the numerical drifters. However,
-quite often this is not enough information to the user, since it is not 
-easy to appreciate where there is a higher concentration of pollution.
-For this reason, there is a post-processing step in which a concentration
-of pollution is determined by counting the number of numerical floats at
-each grid cell for every time step. This information can be used to 
-display heatmaps of water pollution. 
+### Licence
 
 Licensed under GPL2.0
