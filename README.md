@@ -19,6 +19,13 @@ This service uses a backtracking simulation to find the potential source of cont
   * Telegram bot is used for sendingh the bulletins through messaging services
 * Example of use: Docker run forcoast/forcoast-sm-r1 galway 2022-09-11T00:00:00 8 -8.95 53.20 5267228188:AAGx60FtWgHkScBb3ISFL1dp6Oq_9z9z0rw -1001558581397
 
+### Additional information
+
+The code is based on the OpenDrift (https://opendrift.github.io/) particle-
+tracking model. Contaminants are assumed to be perfect passive tracers. 
+The procedure consists of entering a number of numerical drifters into the
+model domain and track its motion.
+
 ### Licence
 
 Licensed under GPL2.0
